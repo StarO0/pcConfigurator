@@ -11,16 +11,17 @@ def test_generate_five_distinct_private_builds(client):
     assert data["requirements"]["budget"] == 6000
     assert len(data["builds"]) == 5
     assert {build["profile"] for build in data["builds"]} == {
-        "max_performance",
-        "balanced",
-        "quiet",
+        "optimal",
+        "economy",
         "upgrade_ready",
-        "best_value",
+        "amd",
+        "intel_nvidia",
     }
     signatures = set()
     for build in data["builds"]:
         assert build["access_token"]
         assert build["compatibility_status"] != "incompatible"
+        assert build["bottleneck"]["status"] in {"balanced", "cpu_limited", "gpu_limited"}
         assert not any(issue["severity"] == "error" for issue in build["compatibility_issues"])
         assert len(build["components"]) == 8
         assert float(build["total_price"]) <= 6000
@@ -29,6 +30,16 @@ def test_generate_five_distinct_private_builds(client):
         )
         signatures.add(tuple(item["product"]["id"] for item in build["components"]))
     assert len(signatures) == 5
+    by_profile = {build["profile"]: build for build in data["builds"]}
+    assert float(by_profile["economy"]["total_price"]) < float(by_profile["optimal"]["total_price"])
+    amd_components = {item["category"]: item["product"] for item in by_profile["amd"]["components"]}
+    assert amd_components["cpu"]["brand"] == "AMD"
+    assert amd_components["gpu"]["specs"]["gpu_brand"] == "AMD"
+    intel_components = {
+        item["category"]: item["product"] for item in by_profile["intel_nvidia"]["components"]
+    }
+    assert intel_components["cpu"]["brand"] == "Intel"
+    assert intel_components["gpu"]["specs"]["gpu_brand"] == "NVIDIA"
 
     private_build = data["builds"][0]
     denied = client.get(f"/api/v1/builds/{private_build['id']}")
@@ -52,6 +63,7 @@ def test_replacement_save_publish_clone_and_trash(client, auth_headers):
         headers=build_headers,
     )
     assert options.status_code == 200, options.text
+    assert all("recommendation_group" in item for item in options.json())
     replacement = next(item for item in options.json() if item["product"]["id"] != current_gpu_id)
     patched = client.patch(
         f"/api/v1/builds/{build['id']}/components/gpu",

@@ -1,11 +1,18 @@
+from __future__ import annotations
+
 import math
 from typing import Any
 
 from app.schemas.builds import CompatibilityIssue
+from app.services.i18n import compatibility_message, normalize_language
 
 
 class CompatibilityEngine:
-    def validate(self, components: dict[str, Any]) -> list[CompatibilityIssue]:
+    def validate(
+        self,
+        components: dict[str, Any],
+        language: str | None = None,
+    ) -> list[CompatibilityIssue]:
         issues: list[CompatibilityIssue] = []
         cpu = components.get("cpu")
         motherboard = components.get("motherboard")
@@ -23,6 +30,15 @@ class CompatibilityEngine:
         self._power(cpu, gpu, psu, issues)
         self._storage(motherboard, storage, issues)
         self._headers(motherboard, case, issues)
+
+        lang = normalize_language(language)
+        for issue in issues:
+            issue.message = compatibility_message(
+                issue.code,
+                lang,
+                issue.details,
+                fallback=issue.message,
+            )
         return issues
 
     def _cpu_motherboard(self, cpu, motherboard, issues: list[CompatibilityIssue]) -> None:
@@ -36,6 +52,7 @@ class CompatibilityEngine:
                     "cpu_socket_mismatch",
                     "Сокеты CPU и платы не совпадают.",
                     ["cpu", "motherboard"],
+                    {"cpu_socket": cpu_socket, "motherboard_socket": board_socket},
                 )
             )
         supported_cpus = motherboard.specs.get("supported_cpu_skus", [])
@@ -45,6 +62,7 @@ class CompatibilityEngine:
                     "cpu_not_in_support_list",
                     "Плата не заявляет поддержку этого процессора.",
                     ["cpu", "motherboard"],
+                    {"cpu_sku": cpu.sku},
                 )
             )
         min_bios = cpu.specs.get("min_bios")
@@ -91,6 +109,10 @@ class CompatibilityEngine:
                     "ram_type_mismatch",
                     "Тип памяти не поддерживается платой.",
                     ["motherboard", "ram"],
+                    {
+                        "required": motherboard.specs.get("ram_type"),
+                        "actual": ram.specs.get("ram_type"),
+                    },
                 )
             )
         modules = int(ram.specs.get("modules", 1))
@@ -112,6 +134,7 @@ class CompatibilityEngine:
                     "ram_capacity_too_high",
                     "Объём RAM превышает максимум платы.",
                     ["motherboard", "ram"],
+                    {"capacity_gb": capacity, "max_capacity_gb": max_capacity},
                 )
             )
         speed = int(ram.specs.get("speed_mhz", 0))
@@ -136,25 +159,36 @@ class CompatibilityEngine:
                 )
             )
         if cooler and ram.specs.get("height_mm") and cooler.specs.get("max_ram_height_mm"):
-            if float(ram.specs["height_mm"]) > float(cooler.specs["max_ram_height_mm"]):
+            height = float(ram.specs["height_mm"])
+            available = float(cooler.specs["max_ram_height_mm"])
+            if height > available:
                 issues.append(
                     self._warning(
                         "ram_cooler_clearance",
                         "Высокие модули RAM могут конфликтовать с кулером.",
                         ["ram", "cooler"],
+                        {
+                            "required_mm": height,
+                            "available_mm": available,
+                            "difference_mm": round(height - available, 1),
+                        },
                     )
                 )
 
     def _cooling(
         self, cpu, motherboard, cooler, case, ram, issues: list[CompatibilityIssue]
     ) -> None:
+        del motherboard, ram
         if not cpu or not cooler:
             return
         socket = cpu.specs.get("socket")
         if socket not in cooler.specs.get("sockets", []):
             issues.append(
                 self._error(
-                    "cooler_socket_mismatch", "Кулер не поддерживает сокет CPU.", ["cpu", "cooler"]
+                    "cooler_socket_mismatch",
+                    "Кулер не поддерживает сокет CPU.",
+                    ["cpu", "cooler"],
+                    {"socket": socket},
                 )
             )
         cpu_power = float(cpu.specs.get("peak_power_w", cpu.specs.get("power_w", 0)))
@@ -174,6 +208,7 @@ class CompatibilityEngine:
                     "cooler_low_headroom",
                     "У кулера небольшой запас; под нагрузкой система может быть шумной.",
                     ["cpu", "cooler"],
+                    {"required_w": cpu_power, "capacity_w": capacity},
                 )
             )
         if cooler.specs.get("type") == "aio" and case:
@@ -185,6 +220,7 @@ class CompatibilityEngine:
                         "radiator_not_supported",
                         "Корпус не поддерживает радиатор этой СЖО.",
                         ["cooler", "case"],
+                        {"radiator_mm": radiator, "supported": ", ".join(map(str, supported))},
                     )
                 )
 
@@ -199,40 +235,93 @@ class CompatibilityEngine:
                     "motherboard_case_mismatch",
                     "Форм-фактор платы не поддерживается корпусом.",
                     ["motherboard", "case"],
+                    {
+                        "form_factor": motherboard.specs.get("form_factor"),
+                        "supported": ", ".join(case.specs.get("motherboard_form_factors", [])),
+                    },
                 )
             )
         if gpu:
-            if float(gpu.specs.get("length_mm", 0)) > float(case.specs.get("max_gpu_length_mm", 0)):
+            gpu_length = float(gpu.specs.get("length_mm", 0))
+            max_length = float(case.specs.get("max_gpu_length_mm", 0))
+            if gpu_length > max_length:
                 issues.append(
                     self._error(
-                        "gpu_too_long", "Видеокарта не помещается по длине.", ["gpu", "case"]
+                        "gpu_too_long",
+                        "Видеокарта не помещается по длине.",
+                        ["gpu", "case"],
+                        {
+                            "required_mm": gpu_length,
+                            "available_mm": max_length,
+                            "difference_mm": round(gpu_length - max_length, 1),
+                            "conflict_object": "drive_cage_or_front_radiator",
+                        },
                     )
                 )
-            if float(gpu.specs.get("height_mm", 0)) > float(
-                case.specs.get("max_gpu_height_mm", 9999)
-            ):
+            if cooler and cooler.specs.get("type") == "aio":
+                radiator = int(cooler.specs.get("radiator_mm", 0))
+                front_sizes = set(case.specs.get("front_radiator_support_mm", []))
+                top_sizes = set(case.specs.get("top_radiator_support_mm", []))
+                front_clearance = case.specs.get("max_gpu_length_with_front_radiator_mm")
+                forced_front = radiator in front_sizes and radiator not in top_sizes
+                if forced_front and front_clearance and gpu_length > float(front_clearance):
+                    issues.append(
+                        self._error(
+                            "gpu_front_radiator_conflict",
+                            "Видеокарта конфликтует с передним радиатором.",
+                            ["gpu", "cooler", "case"],
+                            {
+                                "required_mm": gpu_length,
+                                "available_mm": float(front_clearance),
+                                "difference_mm": round(gpu_length - float(front_clearance), 1),
+                                "radiator_mm": radiator,
+                            },
+                        )
+                    )
+            gpu_height = float(gpu.specs.get("height_mm", 0))
+            max_height = float(case.specs.get("max_gpu_height_mm", 9999))
+            if gpu_height > max_height:
                 issues.append(
                     self._error(
-                        "gpu_too_tall", "Видеокарта не помещается по высоте.", ["gpu", "case"]
+                        "gpu_too_tall",
+                        "Видеокарта не помещается по высоте.",
+                        ["gpu", "case"],
+                        {
+                            "required_mm": gpu_height,
+                            "available_mm": max_height,
+                            "difference_mm": round(gpu_height - max_height, 1),
+                        },
                     )
                 )
-            if float(gpu.specs.get("slots", 2)) > float(case.specs.get("max_gpu_slots", 9)):
+            gpu_slots = float(gpu.specs.get("slots", 2))
+            max_slots = float(case.specs.get("max_gpu_slots", 9))
+            if gpu_slots > max_slots:
                 issues.append(
                     self._error(
                         "gpu_too_thick",
                         "Видеокарта занимает больше слотов, чем допускает корпус.",
                         ["gpu", "case"],
+                        {
+                            "required_slots": gpu_slots,
+                            "available_slots": max_slots,
+                            "difference_slots": round(gpu_slots - max_slots, 1),
+                        },
                     )
                 )
         if cooler and cooler.specs.get("type", "air") == "air":
-            if float(cooler.specs.get("height_mm", 0)) > float(
-                case.specs.get("max_cooler_height_mm", 0)
-            ):
+            height = float(cooler.specs.get("height_mm", 0))
+            available = float(case.specs.get("max_cooler_height_mm", 0))
+            if height > available:
                 issues.append(
                     self._error(
                         "cooler_too_tall",
                         "Башенный кулер не помещается в корпус.",
                         ["cooler", "case"],
+                        {
+                            "required_mm": height,
+                            "available_mm": available,
+                            "difference_mm": round(height - available, 1),
+                        },
                     )
                 )
         if psu:
@@ -244,37 +333,50 @@ class CompatibilityEngine:
                         "psu_form_factor_mismatch",
                         "Форм-фактор БП не поддерживается корпусом.",
                         ["psu", "case"],
+                        {
+                            "form_factor": psu.specs.get("form_factor", "ATX"),
+                            "supported": ", ".join(case.specs.get("psu_form_factors", [])),
+                        },
                     )
                 )
-            if float(psu.specs.get("length_mm", 0)) > float(
-                case.specs.get("max_psu_length_mm", 9999)
-            ):
+            length = float(psu.specs.get("length_mm", 0))
+            available = float(case.specs.get("max_psu_length_mm", 9999))
+            if length > available:
                 issues.append(
                     self._error(
-                        "psu_too_long", "Блок питания не помещается в корпус.", ["psu", "case"]
+                        "psu_too_long",
+                        "Блок питания не помещается в корпус.",
+                        ["psu", "case"],
+                        {
+                            "required_mm": length,
+                            "available_mm": available,
+                            "difference_mm": round(length - available, 1),
+                        },
                     )
                 )
 
     def _power(self, cpu, gpu, psu, issues: list[CompatibilityIssue]) -> None:
         if not cpu or not gpu or not psu:
             return
-        cpu_power = float(cpu.specs.get("peak_power_w", cpu.specs.get("power_w", 0)))
-        gpu_power = float(gpu.specs.get("peak_power_w", gpu.specs.get("power_w", 0)))
-        calculated = math.ceil((cpu_power + gpu_power + 100) * 1.25 / 50) * 50
-        vendor_recommended = int(gpu.specs.get("recommended_psu_w", 0))
-        required = max(calculated, vendor_recommended)
+        required = self.required_psu_w(cpu, gpu)
         if int(psu.specs.get("wattage", 0)) < required:
             issues.append(
                 self._error(
                     "psu_power_low",
                     f"Нужен БП минимум примерно {required} Вт.",
                     ["cpu", "gpu", "psu"],
-                    {"required_w": required},
+                    {"required_w": required, "actual_w": int(psu.specs.get("wattage", 0))},
                 )
             )
-        required_connectors = gpu.specs.get("power_connectors", [])
-        available = psu.specs.get("connectors", [])
-        missing = [connector for connector in required_connectors if connector not in available]
+        required_connectors = list(gpu.specs.get("power_connectors", []))
+        available = list(psu.specs.get("connectors", []))
+        remaining = list(available)
+        missing: list[str] = []
+        for connector in required_connectors:
+            if connector in remaining:
+                remaining.remove(connector)
+            else:
+                missing.append(connector)
         if missing:
             issues.append(
                 self._error(
@@ -310,7 +412,9 @@ class CompatibilityEngine:
             if int(motherboard.specs.get("m2_slots", 0)) < 1:
                 issues.append(
                     self._error(
-                        "m2_slot_missing", "На плате нет M.2 для NVMe.", ["motherboard", "storage"]
+                        "m2_slot_missing",
+                        "На плате нет M.2 для NVMe.",
+                        ["motherboard", "storage"],
                     )
                 )
             size = int(storage.specs.get("form_factor", 2280))
@@ -320,6 +424,7 @@ class CompatibilityEngine:
                         "m2_size_unsupported",
                         "Форм-фактор M.2 не поддерживается платой.",
                         ["motherboard", "storage"],
+                        {"required": size},
                     )
                 )
             drive_pcie = int(storage.specs.get("pcie_generation", 3))
@@ -330,6 +435,7 @@ class CompatibilityEngine:
                         "storage_pcie_downshift",
                         "SSD будет работать на скорости более старой версии PCIe.",
                         ["motherboard", "storage"],
+                        {"drive_generation": drive_pcie, "board_generation": board_pcie},
                     )
                 )
         if interface == "SATA" and int(motherboard.specs.get("sata_ports", 0)) < 1:
@@ -360,8 +466,28 @@ class CompatibilityEngine:
                     "fan_headers_low",
                     "Для всех вентиляторов понадобится разветвитель или хаб.",
                     ["motherboard", "case"],
+                    {"required": required_fan_headers, "available": fan_headers},
                 )
             )
+
+    @staticmethod
+    def required_psu_w(cpu: Any, gpu: Any) -> int:
+        cpu_power = float(cpu.specs.get("peak_power_w", cpu.specs.get("power_w", 0)))
+        gpu_power = float(gpu.specs.get("peak_power_w", gpu.specs.get("power_w", 0)))
+        calculated = math.ceil((cpu_power + gpu_power + 100) * 1.25 / 50) * 50
+        vendor_recommended = int(gpu.specs.get("recommended_psu_w", 0))
+        return max(calculated, vendor_recommended)
+
+    @staticmethod
+    def estimated_peak_power_w(components: dict[str, Any]) -> int:
+        cpu = components.get("cpu")
+        gpu = components.get("gpu")
+        base = 100
+        if cpu:
+            base += int(cpu.specs.get("peak_power_w", cpu.specs.get("power_w", 0)))
+        if gpu:
+            base += int(gpu.specs.get("peak_power_w", gpu.specs.get("power_w", 0)))
+        return base
 
     @staticmethod
     def status(issues: list[CompatibilityIssue]) -> str:
@@ -373,7 +499,11 @@ class CompatibilityEngine:
 
     @staticmethod
     def _issue(
-        code: str, severity: str, message: str, categories: list[str], details: dict | None = None
+        code: str,
+        severity: str,
+        message: str,
+        categories: list[str],
+        details: dict | None = None,
     ) -> CompatibilityIssue:
         return CompatibilityIssue(
             code=code,

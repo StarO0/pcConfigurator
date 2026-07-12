@@ -8,7 +8,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.security import hash_password
-from app.models.entities import Offer, PriceHistory, Product, Store, User
+from app.models.entities import (
+    Offer,
+    PriceHistory,
+    Product,
+    ProductBenchmark,
+    Store,
+    User,
+    WorkloadProfile,
+)
 from app.services.matching import normalize_text
 
 STORE_DATA = [
@@ -601,6 +609,242 @@ PRODUCT_DATA = [
 ]
 
 
+PERIPHERAL_DATA = [
+    (
+        "monitor",
+        "AOC",
+        "AOC Q27G2S 27-inch 1440p 165Hz",
+        "MON-AOC-Q27G2S",
+        1099,
+        82,
+        90,
+        70,
+        84,
+        {"resolution": "1440p", "refresh_hz": 165, "panel": "IPS", "size_inch": 27},
+    ),
+    (
+        "monitor",
+        "LG",
+        "LG UltraGear 27GP850 1440p 180Hz",
+        "MON-LG-27GP850",
+        1499,
+        91,
+        92,
+        75,
+        91,
+        {"resolution": "1440p", "refresh_hz": 180, "panel": "IPS", "size_inch": 27},
+    ),
+    (
+        "monitor",
+        "Gigabyte",
+        "Gigabyte M28U 4K 144Hz",
+        "MON-GB-M28U",
+        2299,
+        95,
+        90,
+        80,
+        92,
+        {"resolution": "4k", "refresh_hz": 144, "panel": "IPS", "size_inch": 28},
+    ),
+    (
+        "monitor",
+        "AOC",
+        "AOC 24G2SP 1080p 165Hz",
+        "MON-AOC-24G2SP",
+        699,
+        72,
+        90,
+        60,
+        80,
+        {"resolution": "1080p", "refresh_hz": 165, "panel": "IPS", "size_inch": 24},
+    ),
+    (
+        "ups",
+        "APC",
+        "APC Back-UPS 950VA",
+        "UPS-APC-950",
+        599,
+        55,
+        82,
+        70,
+        88,
+        {"output_w": 520, "capacity_va": 950, "waveform": "stepped"},
+    ),
+    (
+        "ups",
+        "CyberPower",
+        "CyberPower CP1500EPFCLCD 1500VA",
+        "UPS-CP-1500",
+        899,
+        82,
+        88,
+        85,
+        93,
+        {"output_w": 900, "capacity_va": 1500, "waveform": "pure_sine"},
+    ),
+    (
+        "keyboard",
+        "Keychron",
+        "Keychron C3 Pro Mechanical Keyboard",
+        "KEY-KEYCHRON-C3",
+        249,
+        78,
+        90,
+        70,
+        88,
+        {"layout": "ANSI", "switches": "mechanical", "connection": ["USB-C"]},
+    ),
+    (
+        "mouse",
+        "Logitech",
+        "Logitech G305 Lightspeed",
+        "MOUSE-G305",
+        179,
+        76,
+        95,
+        65,
+        86,
+        {"sensor_dpi": 12000, "wireless": True, "weight_g": 99},
+    ),
+    (
+        "headset",
+        "HyperX",
+        "HyperX Cloud III",
+        "HEADSET-CLOUD3",
+        349,
+        80,
+        92,
+        70,
+        89,
+        {"connection": ["USB", "3.5mm"], "microphone": True},
+    ),
+]
+
+WORKLOAD_DATA = [
+    {
+        "slug": "cyberpunk_2077",
+        "names": {
+            "uk": "Cyberpunk 2077",
+            "en": "Cyberpunk 2077",
+            "pl": "Cyberpunk 2077",
+            "ru": "Cyberpunk 2077",
+        },
+        "kind": "game",
+        "unit": "fps",
+        "lower_is_better": False,
+        "accelerator": "hybrid",
+        "default_resolution": "1440p",
+        "settings": "High, RT off",
+        "cpu_weight": 0.25,
+        "gpu_weight": 0.75,
+        "ram_requirement_gb": 16,
+    },
+    {
+        "slug": "counter_strike_2",
+        "names": {
+            "uk": "Counter-Strike 2",
+            "en": "Counter-Strike 2",
+            "pl": "Counter-Strike 2",
+            "ru": "Counter-Strike 2",
+        },
+        "kind": "game",
+        "unit": "fps",
+        "lower_is_better": False,
+        "accelerator": "hybrid",
+        "default_resolution": "1440p",
+        "settings": "High",
+        "cpu_weight": 0.55,
+        "gpu_weight": 0.45,
+        "ram_requirement_gb": 16,
+    },
+    {
+        "slug": "fortnite",
+        "names": {"uk": "Fortnite", "en": "Fortnite", "pl": "Fortnite", "ru": "Fortnite"},
+        "kind": "game",
+        "unit": "fps",
+        "lower_is_better": False,
+        "accelerator": "hybrid",
+        "default_resolution": "1440p",
+        "settings": "Epic, DX12",
+        "cpu_weight": 0.35,
+        "gpu_weight": 0.65,
+        "ram_requirement_gb": 16,
+    },
+    {
+        "slug": "premiere_pro_4k_export",
+        "names": {
+            "uk": "Premiere Pro: експорт 10 хв 4K",
+            "en": "Premiere Pro: 10 min 4K export",
+            "pl": "Premiere Pro: eksport 10 min 4K",
+            "ru": "Premiere Pro: экспорт 10 мин 4K",
+        },
+        "kind": "render",
+        "unit": "seconds",
+        "lower_is_better": True,
+        "accelerator": "hybrid",
+        "default_resolution": "4k",
+        "settings": "H.264 hardware accelerated",
+        "cpu_weight": 0.55,
+        "gpu_weight": 0.45,
+        "ram_requirement_gb": 32,
+    },
+    {
+        "slug": "davinci_resolve_4k_export",
+        "names": {
+            "uk": "DaVinci Resolve: експорт 10 хв 4K",
+            "en": "DaVinci Resolve: 10 min 4K export",
+            "pl": "DaVinci Resolve: eksport 10 min 4K",
+            "ru": "DaVinci Resolve: экспорт 10 мин 4K",
+        },
+        "kind": "render",
+        "unit": "seconds",
+        "lower_is_better": True,
+        "accelerator": "hybrid",
+        "default_resolution": "4k",
+        "settings": "H.265 hardware accelerated",
+        "cpu_weight": 0.35,
+        "gpu_weight": 0.65,
+        "ram_requirement_gb": 32,
+    },
+    {
+        "slug": "stable_diffusion_xl",
+        "names": {
+            "uk": "Stable Diffusion XL, 20 зображень",
+            "en": "Stable Diffusion XL, 20 images",
+            "pl": "Stable Diffusion XL, 20 obrazów",
+            "ru": "Stable Diffusion XL, 20 изображений",
+        },
+        "kind": "productivity",
+        "unit": "seconds",
+        "lower_is_better": True,
+        "accelerator": "gpu",
+        "default_resolution": None,
+        "settings": "1024x1024, 30 steps",
+        "cpu_weight": 0.05,
+        "gpu_weight": 0.95,
+        "ram_requirement_gb": 32,
+    },
+    {
+        "slug": "code_compile",
+        "names": {
+            "uk": "Компіляція великого проєкту",
+            "en": "Large project compilation",
+            "pl": "Kompilacja dużego projektu",
+            "ru": "Компиляция большого проекта",
+        },
+        "kind": "productivity",
+        "unit": "seconds",
+        "lower_is_better": True,
+        "accelerator": "cpu",
+        "default_resolution": None,
+        "settings": "Parallel release build",
+        "cpu_weight": 0.95,
+        "gpu_weight": 0.05,
+        "ram_requirement_gb": 32,
+    },
+]
+
+
 async def seed_demo_data(session: AsyncSession) -> None:
     stores_by_slug: dict[str, Store] = {}
     for data in STORE_DATA:
@@ -613,7 +857,7 @@ async def seed_demo_data(session: AsyncSession) -> None:
 
     product_count = await session.scalar(select(func.count(Product.id))) or 0
     if product_count == 0:
-        for index, row in enumerate(PRODUCT_DATA, start=1):
+        for index, row in enumerate([*PRODUCT_DATA, *PERIPHERAL_DATA], start=1):
             category, brand, name, sku, base_price, performance, noise, upgrade, quality, specs = (
                 row
             )
@@ -661,6 +905,49 @@ async def seed_demo_data(session: AsyncSession) -> None:
                         shipping_price=shipping,
                         in_stock=True,
                         recorded_at=datetime.now(UTC) - timedelta(days=index % 7),
+                    )
+                )
+
+    for data in WORKLOAD_DATA:
+        workload = await session.scalar(
+            select(WorkloadProfile).where(WorkloadProfile.slug == data["slug"])
+        )
+        if workload is None:
+            session.add(WorkloadProfile(**data))
+
+    await session.flush()
+    benchmark_count = await session.scalar(select(func.count(ProductBenchmark.id))) or 0
+    if benchmark_count == 0:
+        result = await session.execute(select(Product).where(Product.category.in_(["cpu", "gpu"])))
+        for product in result.scalars():
+            perf = max(float(product.performance_score), 1.0)
+            if product.category == "cpu":
+                values = {
+                    "cyberpunk_2077": (perf * 0.78, "fps", "1440p"),
+                    "counter_strike_2": (perf * 1.65, "fps", "1440p"),
+                    "fortnite": (perf * 1.02, "fps", "1440p"),
+                    "premiere_pro_4k_export": (46000 / perf, "seconds", "4k"),
+                    "davinci_resolve_4k_export": (52000 / perf, "seconds", "4k"),
+                    "code_compile": (26000 / perf, "seconds", None),
+                }
+            else:
+                values = {
+                    "cyberpunk_2077": (perf * 0.28, "fps", "1440p"),
+                    "counter_strike_2": (perf * 0.76, "fps", "1440p"),
+                    "fortnite": (perf * 0.46, "fps", "1440p"),
+                    "premiere_pro_4k_export": (52000 / perf, "seconds", "4k"),
+                    "davinci_resolve_4k_export": (42000 / perf, "seconds", "4k"),
+                    "stable_diffusion_xl": (3900 / perf, "seconds", None),
+                }
+            for slug, (score, unit, resolution) in values.items():
+                session.add(
+                    ProductBenchmark(
+                        product_id=product.id,
+                        workload=slug,
+                        resolution=resolution,
+                        score=round(score, 2),
+                        unit=unit,
+                        source="demo-normalized-benchmark-v1",
                     )
                 )
 

@@ -6,6 +6,7 @@ import httpx
 from app.core.config import settings
 from app.schemas.builds import BuildRequirements
 from app.services.ai.base import AIProvider
+from app.services.i18n import language_name
 
 
 class GeminiProvider(AIProvider):
@@ -40,7 +41,7 @@ class GeminiProvider(AIProvider):
 
     async def parse_requirements(self, prompt: str) -> BuildRequirements:
         content = await self._generate(
-            "Parse only PC hardware requirements. Never select components. Default PLN/6000. User: "
+            "Parse only PC hardware requirements. Never select components. Detect language as uk/en/pl/ru. Default PLN/6000. User: "
             + prompt,
             json_mode=True,
         )
@@ -55,7 +56,7 @@ class GeminiProvider(AIProvider):
     ) -> str:
         return (
             await self._generate(
-                "Explain this PC build briefly in Russian using only supplied facts: "
+                f"Explain this PC build briefly in {language_name(requirements.language)} using only supplied facts: "
                 + json.dumps(
                     {
                         "requirements": requirements.model_dump(),

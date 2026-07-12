@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     app_name: str = "PC Builder API"
-    app_version: str = "1.0.0"
+    app_version: str = "2.0.0"
     environment: Literal["development", "test", "production"] = "development"
     api_v1_prefix: str = "/api/v1"
     debug: bool = False
@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     offer_stale_hours: int = 12
     generated_build_ttl_hours: int = 24
     default_currency: str = "PLN"
+    analysis_cache_ttl_seconds: int = 1800
+    analysis_max_workloads: int = 6
+    upsell_recommendation_limit: int = 8
 
     frontend_url: str = "http://localhost:5173"
     smtp_host: str | None = None

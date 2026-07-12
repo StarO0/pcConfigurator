@@ -5,6 +5,7 @@ from app.core.config import settings
 from app.models.entities import Build, Offer, Product
 from app.schemas.builds import BuildComponentOut, BuildOut
 from app.schemas.products import BenchmarkOut, OfferOut, ProductOut, StoreOut
+from app.services.bottleneck import bottleneck_service
 from app.services.compatibility import compatibility_engine
 
 
@@ -80,7 +81,8 @@ def product_to_schema(product: Product) -> ProductOut:
 
 def build_to_schema(build: Build) -> BuildOut:
     product_map = {component.category: component.product for component in build.components}
-    issues = compatibility_engine.validate(product_map)
+    language = (build.requirements or {}).get("language", "ru")
+    issues = compatibility_engine.validate(product_map, language)
     component_price = sum(
         (
             component.selected_offer.price * component.quantity
@@ -88,6 +90,16 @@ def build_to_schema(build: Build) -> BuildOut:
             if component.selected_offer is not None
         ),
         Decimal("0"),
+    )
+    requirements = build.requirements or {}
+    bottleneck = bottleneck_service.assess(
+        product_map, requirements.get("resolution"), requirements.get("language", "ru")
+    )
+    cpu = product_map.get("cpu")
+    gpu = product_map.get("gpu")
+    peak_power = compatibility_engine.estimated_peak_power_w(product_map)
+    recommended_psu = (
+        compatibility_engine.required_psu_w(cpu, gpu) if cpu is not None and gpu is not None else 0
     )
     return BuildOut(
         id=build.id,
@@ -110,6 +122,9 @@ def build_to_schema(build: Build) -> BuildOut:
         expires_at=build.expires_at,
         compatibility_status=compatibility_engine.status(issues),
         compatibility_issues=issues,
+        bottleneck=bottleneck,
+        estimated_peak_power_w=peak_power,
+        recommended_psu_w=recommended_psu,
         components=[
             BuildComponentOut(
                 category=component.category,

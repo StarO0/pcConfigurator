@@ -218,6 +218,29 @@ class CurrencyRate(Base):
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class WorkloadProfile(Base):
+    __tablename__ = "workload_profiles"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    slug: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    names: Mapped[dict[str, str]] = mapped_column(JSON, default=dict)
+    kind: Mapped[str] = mapped_column(String(30), index=True)
+    unit: Mapped[str] = mapped_column(String(30), default="points")
+    lower_is_better: Mapped[bool] = mapped_column(Boolean, default=False)
+    accelerator: Mapped[str] = mapped_column(String(20), default="hybrid")
+    default_resolution: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    settings: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    cpu_weight: Mapped[float] = mapped_column(default=0.35)
+    gpu_weight: Mapped[float] = mapped_column(default=0.65)
+    ram_requirement_gb: Mapped[int] = mapped_column(Integer, default=16)
+    source_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
 class ProductBenchmark(Base):
     __tablename__ = "product_benchmarks"
     __table_args__ = (

@@ -15,55 +15,61 @@ from app.models.entities import Build, BuildComponent, Offer, Product
 from app.schemas.builds import BuildRequirements
 from app.services.ai.service import ai_service
 from app.services.compatibility import compatibility_engine
+from app.services.i18n import profile_title
 from app.services.pricing import BasketMode, best_product_price, optimize_basket
 
 CATEGORY_ORDER = ["cpu", "motherboard", "gpu", "ram", "storage", "cooler", "case", "psu"]
 
 PROFILES: dict[str, dict[str, float | str]] = {
-    "max_performance": {
-        "title": "Максимум производительности",
-        "performance": 1.8,
-        "value": 0.45,
-        "noise": 0.15,
-        "upgrade": 0.25,
-        "quality": 0.35,
-        "budget_use": 1.4,
-    },
-    "balanced": {
-        "title": "Сбалансированная сборка",
-        "performance": 1.05,
+    "optimal": {
+        "performance": 1.35,
         "value": 1.0,
         "noise": 0.55,
-        "upgrade": 0.55,
-        "quality": 0.8,
-        "budget_use": 0.9,
+        "upgrade": 0.7,
+        "quality": 0.9,
+        "budget_use": 0.8,
+        "target_ratio": 0.94,
     },
-    "quiet": {
-        "title": "Тихая сборка",
-        "performance": 0.8,
-        "value": 0.65,
-        "noise": 1.8,
-        "upgrade": 0.4,
-        "quality": 1.0,
-        "budget_use": 0.72,
+    "economy": {
+        "performance": 0.75,
+        "value": 2.25,
+        "noise": 0.3,
+        "upgrade": 0.35,
+        "quality": 0.55,
+        "budget_use": -0.2,
+        "target_ratio": 0.72,
+        "max_ratio": 0.88,
     },
     "upgrade_ready": {
-        "title": "Основа для будущего апгрейда",
-        "performance": 0.75,
-        "value": 0.65,
-        "noise": 0.35,
-        "upgrade": 1.9,
-        "quality": 0.85,
-        "budget_use": 0.8,
-    },
-    "best_value": {
-        "title": "Лучшее цена/качество",
         "performance": 0.9,
-        "value": 1.9,
-        "noise": 0.25,
-        "upgrade": 0.4,
-        "quality": 0.55,
-        "budget_use": 0.4,
+        "value": 0.7,
+        "noise": 0.45,
+        "upgrade": 2.1,
+        "quality": 1.0,
+        "budget_use": 0.65,
+        "target_ratio": 0.9,
+    },
+    "amd": {
+        "performance": 1.15,
+        "value": 1.25,
+        "noise": 0.45,
+        "upgrade": 0.75,
+        "quality": 0.8,
+        "budget_use": 0.7,
+        "target_ratio": 0.91,
+        "cpu_brand": "AMD",
+        "gpu_brand": "AMD",
+    },
+    "intel_nvidia": {
+        "performance": 1.3,
+        "value": 0.8,
+        "noise": 0.45,
+        "upgrade": 0.55,
+        "quality": 0.95,
+        "budget_use": 0.8,
+        "target_ratio": 0.94,
+        "cpu_brand": "Intel",
+        "gpu_brand": "NVIDIA",
     },
 }
 
@@ -173,8 +179,8 @@ class BuildGenerator:
                 access_token_hash=token_hash(raw_access_token),
                 prompt=prompt,
                 profile=profile_name,
-                title=str(PROFILES[profile_name]["title"]),
-                name=str(PROFILES[profile_name]["title"]),
+                title=profile_title(profile_name, requirements.language),
+                name=profile_title(profile_name, requirements.language),
                 requirements=requirements.model_dump(mode="json"),
                 explanation=explanation,
                 budget=Decimal(str(requirements.budget)),
@@ -288,7 +294,9 @@ class BuildGenerator:
                         continue
                     components = {**state.components, category: candidate}
                     product_map = {key: value.product for key, value in components.items()}
-                    issues = compatibility_engine.validate(product_map)
+                    if not self._profile_allows(candidate.product, category, profile):
+                        continue
+                    issues = compatibility_engine.validate(product_map, requirements.language)
                     if any(issue.severity == "error" for issue in issues):
                         continue
                     score = state.score + self._score_candidate(
@@ -315,8 +323,32 @@ class BuildGenerator:
                     break
             states = deduped
         final = [state for state in states if state.estimated_total <= budget]
+        max_ratio = float(profile.get("max_ratio", 1.0))
+        within_profile_budget = [
+            state for state in final if float(state.estimated_total / budget) <= max_ratio
+        ]
+        if within_profile_budget:
+            final = within_profile_budget
+        target_ratio = float(profile.get("target_ratio", 0.9))
+        for state in final:
+            actual_ratio = float(state.estimated_total / budget)
+            state.score -= abs(actual_ratio - target_ratio) * 180
         final.sort(key=lambda item: item.score, reverse=True)
         return final
+
+    @staticmethod
+    def _profile_allows(
+        product: Product,
+        category: str,
+        profile: dict[str, float | str],
+    ) -> bool:
+        required_cpu = profile.get("cpu_brand")
+        required_gpu = profile.get("gpu_brand")
+        if category == "cpu" and required_cpu and product.brand != required_cpu:
+            return False
+        return not (
+            category == "gpu" and required_gpu and product.specs.get("gpu_brand") != required_gpu
+        )
 
     def _score_candidate(
         self,

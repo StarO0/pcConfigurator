@@ -6,6 +6,7 @@ from openai import AsyncOpenAI
 from app.core.config import settings
 from app.schemas.builds import BuildRequirements
 from app.services.ai.base import AIProvider
+from app.services.i18n import language_name
 
 
 class DeepSeekProvider(AIProvider):
@@ -29,7 +30,7 @@ class DeepSeekProvider(AIProvider):
             messages=[
                 {
                     "role": "system",
-                    "content": f"Return only JSON matching this schema: {json.dumps(BuildRequirements.model_json_schema())}. Parse PC requirements only.",
+                    "content": f"Return only JSON matching this schema: {json.dumps(BuildRequirements.model_json_schema())}. Parse PC requirements only. Detect language as uk/en/pl/ru and include it in JSON.",
                 },
                 {"role": "user", "content": prompt},
             ],
@@ -49,7 +50,7 @@ class DeepSeekProvider(AIProvider):
             messages=[
                 {
                     "role": "system",
-                    "content": "Explain the supplied PC build briefly in Russian. Do not invent facts.",
+                    "content": f"Explain the supplied PC build briefly in {language_name(requirements.language)}. Do not invent facts.",
                 },
                 {
                     "role": "user",

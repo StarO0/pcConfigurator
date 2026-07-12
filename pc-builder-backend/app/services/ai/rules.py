@@ -1,93 +1,157 @@
+from __future__ import annotations
+
 import re
 from typing import Any
 
 from app.schemas.builds import BuildRequirements, CompatibilityIssue
 from app.services.ai.base import AIProvider
+from app.services.i18n import detect_language, profile_title, text
 
 
 class RuleBasedAIProvider(AIProvider):
     name = "rules"
-    model = "rules-v2"
+    model = "rules-v3-multilingual"
 
     async def parse_requirements(self, prompt: str) -> BuildRequirements:
-        text = prompt.lower().replace(" ", " ")
-        budget = self._budget(text)
-        currency = (
-            "EUR"
-            if "eur" in text or "евро" in text
-            else "USD"
-            if "$" in text or "usd" in text
-            else "PLN"
-        )
+        text_value = prompt.lower().replace(" ", " ")
+        language = detect_language(prompt)
+        budget = self._budget(text_value)
+        currency = self._currency(text_value)
         purposes: list[str] = []
         mapping = {
-            "gaming": ["игр", "gaming", "fps", "киберспорт"],
-            "video_editing": ["монтаж", "premiere", "davinci", "4k видео", "after effects"],
-            "programming": ["программ", "код", "docker", "виртуал", "разработ"],
-            "streaming": ["стрим", "obs"],
-            "ai": ["нейросет", "машинн", "stable diffusion", "llm", "ai"],
-            "office": ["офис", "браузер", "word", "учеб"],
+            "gaming": [
+                "игр",
+                "gaming",
+                "game",
+                "fps",
+                "фпс",
+                "кіберспорт",
+                "gry",
+                "grania",
+                "esport",
+            ],
+            "video_editing": [
+                "монтаж",
+                "premiere",
+                "davinci",
+                "4k video",
+                "4k відео",
+                "after effects",
+                "edycja wideo",
+                "montaż",
+                "video editing",
+            ],
+            "programming": [
+                "программ",
+                "програмув",
+                "код",
+                "coding",
+                "programming",
+                "programowanie",
+                "docker",
+                "виртуал",
+                "wirtual",
+                "разработ",
+            ],
+            "streaming": ["стрим", "стрім", "stream", "obs"],
+            "ai": [
+                "нейросет",
+                "нейромереж",
+                "машинн",
+                "stable diffusion",
+                "llm",
+                "sztuczna inteligencja",
+                "machine learning",
+                " ai ",
+            ],
+            "office": [
+                "офис",
+                "офіс",
+                "biuro",
+                "office",
+                "браузер",
+                "browser",
+                "word",
+                "учеб",
+                "навчан",
+                "nauka",
+            ],
         }
         for purpose, words in mapping.items():
-            if any(word in text for word in words):
+            if any(word in text_value for word in words):
                 purposes.append(purpose)
         if not purposes:
             purposes = ["universal"]
 
         resolution = None
-        if re.search(r"\b(8k|7680)", text):
+        if re.search(r"\b(8k|7680)", text_value):
             resolution = "8k"
-        elif re.search(r"\b(4k|2160p|3840)", text):
+        elif re.search(r"\b(4k|2160p|3840)", text_value):
             resolution = "4k"
-        elif re.search(r"\b(1440p|2k|qhd|2560)", text):
+        elif re.search(r"\b(1440p|2k|qhd|2560)", text_value):
             resolution = "1440p"
-        elif re.search(r"\b(1080p|full\s*hd|fhd|1920)", text):
+        elif re.search(r"\b(1080p|full\s*hd|fhd|1920)", text_value):
             resolution = "1080p"
 
-        fps_match = re.search(r"(\d{2,3})\s*(?:fps|фпс|кадр)", text)
+        fps_match = re.search(r"(\d{2,3})\s*(?:fps|фпс|кадр|klatek)", text_value)
         target_fps = int(fps_match.group(1)) if fps_match else None
-        low_noise = any(word in text for word in ["тих", "бесшум", "low noise", "silent"])
+        low_noise = any(
+            word in text_value
+            for word in [
+                "тих",
+                "тихий",
+                "тиха",
+                "бесшум",
+                "безшум",
+                "low noise",
+                "silent",
+                "cichy",
+                "cicha",
+            ]
+        )
         upgradeability = (
-            "high" if any(word in text for word in ["апгрейд", "будущее", "запас"]) else "medium"
+            "high"
+            if any(
+                word in text_value
+                for word in [
+                    "апгрейд",
+                    "майбут",
+                    "будущее",
+                    "запас",
+                    "upgrade",
+                    "rozbudow",
+                    "przyszłość",
+                ]
+            )
+            else "medium"
         )
         cpu_brand = (
             "AMD"
-            if "ryzen" in text or "amd процесс" in text
+            if "ryzen" in text_value or "amd cpu" in text_value or "amd процесс" in text_value
             else "Intel"
-            if "intel" in text or "core i" in text
+            if "intel" in text_value or "core i" in text_value
             else None
         )
         gpu_brand = (
             "NVIDIA"
-            if any(word in text for word in ["nvidia", "rtx", "geforce"])
+            if any(word in text_value for word in ["nvidia", "rtx", "geforce"])
             else "AMD"
-            if any(word in text for word in ["radeon", "rx "])
+            if any(word in text_value for word in ["radeon", "rx "])
             else "Intel"
-            if "arc" in text
+            if "arc" in text_value
             else None
         )
-        storage_match = re.search(r"(\d+(?:[.,]\d+)?)\s*(tb|тб|gb|гб)", text)
-        storage_gb = 1000
-        if storage_match:
-            amount = float(storage_match.group(1).replace(",", "."))
-            storage_gb = int(amount * 1000 if storage_match.group(2) in {"tb", "тб"} else amount)
-        ram_match = re.search(
-            r"(16|24|32|48|64|96|128|192|256)\s*(?:gb|гб).*?(?:ram|озу|памят)", text
-        )
-        if not ram_match:
-            ram_match = re.search(
-                r"(?:ram|озу|памят).*?(16|24|32|48|64|96|128|192|256)\s*(?:gb|гб)", text
-            )
-        ram_gb = (
-            int(ram_match.group(1))
-            if ram_match
-            else (64 if "video_editing" in purposes or "ai" in purposes else 32)
-        )
+        storage_gb = self._storage(text_value)
+        ram_gb = self._ram(text_value, purposes)
         max_stores = None
-        stores_match = re.search(r"(?:не больше|максимум|max)\s*(\d)\s*магаз", text)
+        stores_match = re.search(
+            r"(?:не больше|максимум|max|nie więcej niż)\s*(\d)\s*(?:магаз|sklep|store)",
+            text_value,
+        )
         if stores_match:
             max_stores = int(stores_match.group(1))
 
+        workload_names = self._workloads(text_value)
         return BuildRequirements(
             budget=budget,
             currency=currency,
@@ -97,29 +161,47 @@ class RuleBasedAIProvider(AIProvider):
             low_noise=low_noise,
             upgradeability=upgradeability,
             rgb=True
-            if "rgb" in text or "подсвет" in text
+            if "rgb" in text_value or "подсвет" in text_value or "підсвіт" in text_value
             else False
-            if "без rgb" in text
+            if any(
+                value in text_value for value in ["без rgb", "no rgb", "bez rgb", "без підсвітки"]
+            )
             else None,
-            case_color="white" if "бел" in text else "black" if "черн" in text else None,
+            case_color=self._case_color(text_value),
             cpu_brand=cpu_brand,
             gpu_brand=gpu_brand,
             storage_gb=max(500, storage_gb),
             ram_gb=ram_gb,
-            include_wifi="wifi" in text or "wi-fi" in text or "вайф" in text,
-            include_bluetooth="bluetooth" in text or "блют" in text,
-            overclocking="разгон" in text or "overclock" in text,
+            include_wifi=any(value in text_value for value in ["wifi", "wi-fi", "вайф"]),
+            include_bluetooth=any(
+                value in text_value for value in ["bluetooth", "блют", "bluetooth"]
+            ),
+            overclocking=any(
+                value in text_value for value in ["разгон", "розгін", "overclock", "podkręc"]
+            ),
             max_store_count=max_stores,
+            workload_names=workload_names,
+            language=language,
         )
 
     @staticmethod
-    def _budget(text: str) -> float:
+    def _currency(text_value: str) -> str:
+        if any(value in text_value for value in ["eur", "евро", "євро", "euro", "€"]):
+            return "EUR"
+        if "$" in text_value or "usd" in text_value or "dollar" in text_value:
+            return "USD"
+        if any(value in text_value for value in ["uah", "грн", "₴"]):
+            return "UAH"
+        return "PLN"
+
+    @staticmethod
+    def _budget(text_value: str) -> float:
         patterns = [
-            r"(?:до|бюджет|budget)\s*(?:примерно|около|~)?\s*(\d[\d\s.,]*)",
-            r"(\d[\d\s.,]*)\s*(?:pln|зл|zł|евро|eur|usd|\$)",
+            r"(?:до|бюджет|budget|budżet|бюджетом)\s*(?:примерно|около|~|około)?\s*(\d[\d\s.,]*)",
+            r"(\d[\d\s.,]*)\s*(?:pln|зл|zł|евро|євро|eur|usd|uah|грн|\$|€|₴)",
         ]
         for pattern in patterns:
-            match = re.search(pattern, text)
+            match = re.search(pattern, text_value)
             if match:
                 raw = match.group(1).replace(" ", "").replace(",", ".")
                 try:
@@ -130,6 +212,50 @@ class RuleBasedAIProvider(AIProvider):
                     continue
         return 6000
 
+    @staticmethod
+    def _storage(text_value: str) -> int:
+        storage_match = re.search(r"(\d+(?:[.,]\d+)?)\s*(tb|тб|gb|гб)", text_value)
+        if not storage_match:
+            return 1000
+        amount = float(storage_match.group(1).replace(",", "."))
+        return int(amount * 1000 if storage_match.group(2) in {"tb", "тб"} else amount)
+
+    @staticmethod
+    def _ram(text_value: str, purposes: list[str]) -> int:
+        patterns = [
+            r"(16|24|32|48|64|96|128|192|256)\s*(?:gb|гб).*?(?:ram|озу|памят)",
+            r"(?:ram|озу|памят).*?(16|24|32|48|64|96|128|192|256)\s*(?:gb|гб)",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, text_value)
+            if match:
+                return int(match.group(1))
+        return 64 if "video_editing" in purposes or "ai" in purposes else 32
+
+    @staticmethod
+    def _case_color(text_value: str) -> str | None:
+        if any(value in text_value for value in ["бел", "білий", "white", "biały", "biała"]):
+            return "white"
+        if any(value in text_value for value in ["черн", "чорн", "black", "czarn"]):
+            return "black"
+        return None
+
+    @staticmethod
+    def _workloads(text_value: str) -> list[str]:
+        matches = {
+            "cyberpunk_2077": ["cyberpunk", "киберпанк", "кіберпанк"],
+            "counter_strike_2": ["counter-strike", "counter strike", "cs2", "кс2"],
+            "fortnite": ["fortnite", "фортнайт"],
+            "premiere_pro_4k_export": ["premiere", "премьер", "прем'єр"],
+            "davinci_resolve_4k_export": ["davinci", "да винчи", "давінчі"],
+            "stable_diffusion_xl": ["stable diffusion", "sdxl"],
+            "code_compile": ["compile", "компиля", "компіля", "kompilac"],
+        }
+        output = [
+            slug for slug, words in matches.items() if any(word in text_value for word in words)
+        ]
+        return output
+
     async def explain_build(
         self,
         requirements: BuildRequirements,
@@ -138,22 +264,18 @@ class RuleBasedAIProvider(AIProvider):
         total_price: float,
     ) -> str:
         names = {item["category"]: item["name"] for item in components}
-        profile_text = {
-            "max_performance": "максимальный результат сейчас",
-            "balanced": "ровный баланс скорости, качества и цены",
-            "quiet": "низкий шум и хороший температурный запас",
-            "upgrade_ready": "современную платформу и будущий апгрейд",
-            "best_value": "максимум пользы за каждый злотый",
-        }.get(profile, "сбалансированную работу")
-        purposes = ", ".join(requirements.purposes)
-        return (
-            f"Вариант рассчитан на {profile_text}. Связка {names.get('cpu', 'CPU')} и "
-            f"{names.get('gpu', 'GPU')} подходит под задачи: {purposes}. Плата, память, охлаждение, "
-            f"корпус и питание прошли детерминированную проверку совместимости. Итог с выбранной "
-            f"доставкой составляет {total_price:.2f} {requirements.currency}."
+        return text(
+            "build_explanation",
+            requirements.language,
+            profile=profile_title(profile, requirements.language),
+            purposes=", ".join(requirements.purposes),
+            cpu=names.get("cpu", "CPU"),
+            gpu=names.get("gpu", "GPU"),
+            price=total_price,
+            currency=requirements.currency,
         )
 
     async def explain_compatibility(self, issues: list[CompatibilityIssue]) -> str:
         if not issues:
-            return "Компоненты совместимы по проверяемым параметрам."
+            return "OK"
         return " ".join(f"{index + 1}) {issue.message}" for index, issue in enumerate(issues))

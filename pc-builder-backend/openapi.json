@@ -3,7 +3,7 @@
   "info": {
     "title": "PC Builder API",
     "description": "Production-oriented AI-assisted PC configurator. AI parses user intent and explains results; deterministic code validates compatibility and selects products.",
-    "version": "1.0.0"
+    "version": "2.0.0"
   },
   "paths": {
     "/api/v1/health": {
@@ -1887,8 +1887,8 @@
             "required": false,
             "schema": {
               "type": "string",
-              "pattern": "^(price|performance|noise|upgrade)$",
-              "default": "price",
+              "pattern": "^(smart|price|performance|noise|upgrade)$",
+              "default": "smart",
               "title": "Sort"
             }
           },
@@ -2388,6 +2388,254 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/builds/{build_id}/analysis": {
+      "get": {
+        "tags": [
+          "build-analysis"
+        ],
+        "summary": "Analyze Build",
+        "operationId": "analyze_build_api_v1_builds__build_id__analysis_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "build_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Build Id"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(uk|en|pl|ru)$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Language"
+            }
+          },
+          {
+            "name": "refresh",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Refresh"
+            }
+          },
+          {
+            "name": "X-Build-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Build-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildAnalysisResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/benchmarks/workloads": {
+      "get": {
+        "tags": [
+          "benchmarks"
+        ],
+        "summary": "List Workloads",
+        "operationId": "list_workloads_api_v1_benchmarks_workloads_get",
+        "parameters": [
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(uk|en|pl|ru)$",
+              "default": "en",
+              "title": "Language"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(game|render|productivity)$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WorkloadOut"
+                  },
+                  "title": "Response List Workloads Api V1 Benchmarks Workloads Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/benchmarks/admin/workloads": {
+      "post": {
+        "tags": [
+          "benchmarks"
+        ],
+        "summary": "Upsert Workload",
+        "operationId": "upsert_workload_api_v1_benchmarks_admin_workloads_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkloadCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkloadOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/benchmarks/admin/results/import": {
+      "post": {
+        "tags": [
+          "benchmarks"
+        ],
+        "summary": "Import Results",
+        "operationId": "import_results_api_v1_benchmarks_admin_results_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BenchmarkImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BenchmarkImportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/v1/admin/stats": {
@@ -3411,6 +3659,42 @@
         ],
         "title": "AuditLogOut"
       },
+      "BenchmarkImportRequest": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/BenchmarkResultImport"
+            },
+            "type": "array",
+            "maxItems": 10000,
+            "minItems": 1,
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "results"
+        ],
+        "title": "BenchmarkImportRequest"
+      },
+      "BenchmarkImportResponse": {
+        "properties": {
+          "created": {
+            "type": "integer",
+            "title": "Created"
+          },
+          "updated": {
+            "type": "integer",
+            "title": "Updated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "created",
+          "updated"
+        ],
+        "title": "BenchmarkImportResponse"
+      },
       "BenchmarkOut": {
         "properties": {
           "workload": {
@@ -3470,6 +3754,190 @@
           "measured_at"
         ],
         "title": "BenchmarkOut"
+      },
+      "BenchmarkResultImport": {
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Product Id"
+          },
+          "workload_slug": {
+            "type": "string",
+            "title": "Workload Slug"
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 30
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution"
+          },
+          "score": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Score"
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 30,
+            "minLength": 1,
+            "title": "Unit"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_id",
+          "workload_slug",
+          "score",
+          "unit"
+        ],
+        "title": "BenchmarkResultImport"
+      },
+      "BottleneckAssessment": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "balanced",
+              "cpu_limited",
+              "gpu_limited"
+            ],
+            "title": "Status"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "none",
+              "info",
+              "warning",
+              "critical"
+            ],
+            "title": "Severity"
+          },
+          "limiting_component": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "cpu",
+                  "gpu"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limiting Component"
+          },
+          "estimated_percent": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Estimated Percent"
+          },
+          "resolution": {
+            "type": "string",
+            "title": "Resolution"
+          },
+          "cpu_score": {
+            "type": "number",
+            "title": "Cpu Score"
+          },
+          "gpu_score": {
+            "type": "number",
+            "title": "Gpu Score"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "recommended_products": {
+            "items": {
+              "$ref": "#/components/schemas/ProductOut"
+            },
+            "type": "array",
+            "title": "Recommended Products",
+            "default": []
+          },
+          "methodology": {
+            "type": "string",
+            "title": "Methodology",
+            "default": "relative-score-v1"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "severity",
+          "estimated_percent",
+          "resolution",
+          "cpu_score",
+          "gpu_score",
+          "message"
+        ],
+        "title": "BottleneckAssessment"
+      },
+      "BuildAnalysisResponse": {
+        "properties": {
+          "build_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Build Id"
+          },
+          "bottleneck": {
+            "$ref": "#/components/schemas/BottleneckAssessment"
+          },
+          "performance": {
+            "items": {
+              "$ref": "#/components/schemas/PerformanceEstimate"
+            },
+            "type": "array",
+            "title": "Performance"
+          },
+          "upsell": {
+            "items": {
+              "$ref": "#/components/schemas/UpsellRecommendation"
+            },
+            "type": "array",
+            "title": "Upsell"
+          },
+          "estimated_peak_power_w": {
+            "type": "integer",
+            "title": "Estimated Peak Power W"
+          },
+          "recommended_psu_w": {
+            "type": "integer",
+            "title": "Recommended Psu W"
+          }
+        },
+        "type": "object",
+        "required": [
+          "build_id",
+          "bottleneck",
+          "performance",
+          "upsell",
+          "estimated_peak_power_w",
+          "recommended_psu_w"
+        ],
+        "title": "BuildAnalysisResponse"
       },
       "BuildCompareRequest": {
         "properties": {
@@ -3702,6 +4170,26 @@
             },
             "type": "array",
             "title": "Compatibility Issues"
+          },
+          "bottleneck": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BottleneckAssessment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "estimated_peak_power_w": {
+            "type": "integer",
+            "title": "Estimated Peak Power W",
+            "default": 0
+          },
+          "recommended_psu_w": {
+            "type": "integer",
+            "title": "Recommended Psu W",
+            "default": 0
           },
           "components": {
             "items": {
@@ -3936,6 +4424,17 @@
             "type": "array",
             "maxItems": 20,
             "title": "Workload Names"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "uk",
+              "en",
+              "pl",
+              "ru"
+            ],
+            "title": "Language",
+            "default": "ru"
           }
         },
         "additionalProperties": false,
@@ -4269,6 +4768,23 @@
             ],
             "title": "Basket Mode",
             "default": "balanced"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "uk",
+                  "en",
+                  "pl",
+                  "ru"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
           }
         },
         "type": "object",
@@ -4415,6 +4931,26 @@
             },
             "type": "array",
             "title": "Compatibility Issues"
+          },
+          "bottleneck": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BottleneckAssessment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "estimated_peak_power_w": {
+            "type": "integer",
+            "title": "Estimated Peak Power W",
+            "default": 0
+          },
+          "recommended_psu_w": {
+            "type": "integer",
+            "title": "Recommended Psu W",
+            "default": 0
           },
           "components": {
             "items": {
@@ -5167,6 +5703,109 @@
         ],
         "title": "PasswordResetRequest"
       },
+      "PerformanceEstimate": {
+        "properties": {
+          "workload_slug": {
+            "type": "string",
+            "title": "Workload Slug"
+          },
+          "workload_name": {
+            "type": "string",
+            "title": "Workload Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "game",
+              "render",
+              "productivity"
+            ],
+            "title": "Kind"
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution"
+          },
+          "settings": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settings"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Confidence"
+          },
+          "limiting_component": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "cpu",
+                  "gpu",
+                  "ram",
+                  "balanced"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limiting Component"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workload_slug",
+          "workload_name",
+          "kind",
+          "value",
+          "unit",
+          "confidence",
+          "disclaimer"
+        ],
+        "title": "PerformanceEstimate"
+      },
       "PriceAlertCreate": {
         "properties": {
           "product_id": {
@@ -5879,6 +6518,38 @@
             "type": "string",
             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Projected Total"
+          },
+          "price_delta": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Price Delta",
+            "default": "0"
+          },
+          "performance_delta_percent": {
+            "type": "number",
+            "title": "Performance Delta Percent",
+            "default": 0
+          },
+          "recommendation_group": {
+            "type": "string",
+            "enum": [
+              "cheaper_alternative",
+              "smart_upgrade",
+              "balanced",
+              "other"
+            ],
+            "title": "Recommendation Group",
+            "default": "other"
+          },
+          "recommendation_reason": {
+            "type": "string",
+            "title": "Recommendation Reason",
+            "default": ""
+          },
+          "value_score": {
+            "type": "number",
+            "title": "Value Score",
+            "default": 0
           }
         },
         "type": "object",
@@ -6315,6 +6986,54 @@
         ],
         "title": "UpdateProfileRequest"
       },
+      "UpsellRecommendation": {
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "monitor",
+              "ups",
+              "keyboard",
+              "mouse",
+              "headset"
+            ],
+            "title": "Category"
+          },
+          "product": {
+            "$ref": "#/components/schemas/ProductOut"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "priority": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Priority"
+          },
+          "projected_price": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projected Price"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "product",
+          "reason",
+          "priority"
+        ],
+        "title": "UpsellRecommendation"
+      },
       "UserOut": {
         "properties": {
           "id": {
@@ -6419,6 +7138,209 @@
           "token"
         ],
         "title": "VerifyEmailRequest"
+      },
+      "WorkloadCreate": {
+        "properties": {
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]{1,118}[a-z0-9]$",
+            "title": "Slug"
+          },
+          "names": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Names"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "game",
+              "render",
+              "productivity"
+            ],
+            "title": "Kind"
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 30,
+            "minLength": 1,
+            "title": "Unit"
+          },
+          "lower_is_better": {
+            "type": "boolean",
+            "title": "Lower Is Better",
+            "default": false
+          },
+          "accelerator": {
+            "type": "string",
+            "enum": [
+              "cpu",
+              "gpu",
+              "hybrid"
+            ],
+            "title": "Accelerator",
+            "default": "hybrid"
+          },
+          "default_resolution": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 30
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Resolution"
+          },
+          "settings": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settings"
+          },
+          "cpu_weight": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Cpu Weight",
+            "default": 0.35
+          },
+          "gpu_weight": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Gpu Weight",
+            "default": 0.65
+          },
+          "ram_requirement_gb": {
+            "type": "integer",
+            "maximum": 1024.0,
+            "minimum": 1.0,
+            "title": "Ram Requirement Gb",
+            "default": 16
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "slug",
+          "names",
+          "kind",
+          "unit"
+        ],
+        "title": "WorkloadCreate"
+      },
+      "WorkloadOut": {
+        "properties": {
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "names": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Names"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "game",
+              "render",
+              "productivity"
+            ],
+            "title": "Kind"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "lower_is_better": {
+            "type": "boolean",
+            "title": "Lower Is Better"
+          },
+          "accelerator": {
+            "type": "string",
+            "enum": [
+              "cpu",
+              "gpu",
+              "hybrid"
+            ],
+            "title": "Accelerator"
+          },
+          "default_resolution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Resolution"
+          },
+          "settings": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settings"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "slug",
+          "name",
+          "names",
+          "kind",
+          "unit",
+          "lower_is_better",
+          "accelerator",
+          "default_resolution",
+          "settings",
+          "source_url"
+        ],
+        "title": "WorkloadOut"
       }
     },
     "securitySchemes": {

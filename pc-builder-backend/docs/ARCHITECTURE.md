@@ -13,7 +13,7 @@ AIService.parse_requirements()
   rules | OpenAI | Gemini | DeepSeek
         |
         v
-BuildGenerator (beam search, 5 профилей)
+BuildGenerator (beam search: optimal/economy/upgrade/AMD/Intel+NVIDIA)
         |
         +--> PostgreSQL: products, offers, benchmarks
         +--> Pricing optimizer: цена + доставка + число магазинов
@@ -55,3 +55,19 @@ Celery Beat запускает периодические задачи. Толь
 ## Масштабирование
 
 API не хранит состояние процесса и масштабируется горизонтально. PostgreSQL и Redis должны быть общими. В production миграции запускаются один раз перед раскаткой новых API-инстансов. Worker можно масштабировать отдельно по очередям.
+
+
+## Аналитический поток
+
+```text
+Build + ProductBenchmark + WorkloadProfile
+        |
+        +--> BottleneckService -> CPU/GPU balance + compatible upgrade candidates
+        +--> PerformanceService -> FPS / render time / productivity estimate
+        +--> RecommendationService -> smart replacement tabs + peripheral upsell
+        |
+        v
+GET /builds/{id}/analysis (Redis cache by build version and language)
+```
+
+Версия сборки входит в cache key, поэтому после замены детали старый анализ не возвращается.

@@ -51,3 +51,6 @@ def test_detects_multiple_hardware_conflicts():
         "m2_slot_missing",
     } <= codes
     assert compatibility_engine.status(issues) == "incompatible"
+    gpu_issue = next(issue for issue in issues if issue.code == "gpu_too_long")
+    assert gpu_issue.details["difference_mm"] == 100
+    assert "100" in gpu_issue.message

@@ -38,6 +38,7 @@ from app.services.builds import create_build_revision
 from app.services.cache import cache
 from app.services.compatibility import compatibility_engine
 from app.services.pricing import optimize_basket
+from app.services.recommendations import recommendation_service
 from app.services.serializers import build_to_schema, product_to_schema
 
 router = APIRouter(prefix="/builds", tags=["builds"])
@@ -109,7 +110,8 @@ async def generate_builds(
 ) -> GenerateBuildResponse:
     user_id = user.id if user else None
     normalized_prompt = " ".join(payload.prompt.strip().lower().split())
-    prompt_key = f"prompt-parse:{hashlib.sha256(normalized_prompt.encode()).hexdigest()}"
+    cache_source = f"{payload.language or 'auto'}:{normalized_prompt}"
+    prompt_key = f"prompt-parse:{hashlib.sha256(cache_source.encode()).hexdigest()}"
     cached_requirements = await cache.get_json(prompt_key)
     if cached_requirements:
         from app.schemas.builds import BuildRequirements
@@ -122,6 +124,8 @@ async def generate_builds(
             user_id=user_id,
         )
         await cache.set_json(prompt_key, requirements.model_dump(mode="json"), 86400)
+    if payload.language is not None:
+        requirements.language = payload.language
     if payload.budget is not None:
         requirements.budget = payload.budget
     if payload.currency is not None:
@@ -275,7 +279,7 @@ async def replacement_options(
     compatible_only: bool = True,
     max_price: Decimal | None = Query(default=None, ge=0),
     brand: list[str] = Query(default=[]),
-    sort: str = Query(default="price", pattern="^(price|performance|noise|upgrade)$"),
+    sort: str = Query(default="smart", pattern="^(smart|price|performance|noise|upgrade)$"),
     limit: int = Query(default=100, ge=1, le=200),
 ) -> list[ReplacementOption]:
     build = await load_build(session, build_id)
@@ -305,7 +309,8 @@ async def replacement_options(
     for product in result.scalars().unique():
         candidate_map = dict(current)
         candidate_map[category] = product
-        issues = compatibility_engine.validate(candidate_map)
+        language = build.requirements.get("language", "ru")
+        issues = compatibility_engine.validate(candidate_map, language)
         is_compatible = not any(issue.severity == "error" for issue in issues)
         if compatible_only and not is_compatible:
             continue
@@ -317,12 +322,26 @@ async def replacement_options(
         )
         if basket is None or (max_price is not None and basket.total_price > max_price):
             continue
+        group, reason, performance_delta, price_delta, value_score = (
+            recommendation_service.classify_replacement(
+                current[category],
+                product,
+                build.total_price,
+                basket.total_price,
+                build.requirements.get("language", "ru"),
+            )
+        )
         options.append(
             ReplacementOption(
                 product=product_to_schema(product),
                 is_compatible=is_compatible,
                 issues=issues,
                 projected_total=basket.total_price,
+                price_delta=price_delta,
+                performance_delta_percent=performance_delta,
+                recommendation_group=group,
+                recommendation_reason=reason,
+                value_score=value_score,
             )
         )
     if sort == "performance":
@@ -331,6 +350,21 @@ async def replacement_options(
         options.sort(key=lambda option: (-option.product.noise_score, option.projected_total))
     elif sort == "upgrade":
         options.sort(key=lambda option: (-option.product.upgrade_score, option.projected_total))
+    elif sort == "smart":
+        group_order = {
+            "cheaper_alternative": 0,
+            "smart_upgrade": 1,
+            "balanced": 2,
+            "other": 3,
+        }
+        options.sort(
+            key=lambda option: (
+                not option.is_compatible,
+                group_order[option.recommendation_group],
+                -option.value_score,
+                option.projected_total,
+            )
+        )
     else:
         options.sort(key=lambda option: (not option.is_compatible, option.projected_total))
     return options[:limit]
@@ -376,7 +410,7 @@ async def replace_component(
 
     candidate_map = {item.category: item.product for item in build.components}
     candidate_map[category] = product
-    issues = compatibility_engine.validate(candidate_map)
+    issues = compatibility_engine.validate(candidate_map, build.requirements.get("language", "ru"))
     if any(issue.severity == "error" for issue in issues):
         explanation = await ai_service.explain_compatibility(
             issues,

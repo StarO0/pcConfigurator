@@ -5,6 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.schemas.analysis import BottleneckAssessment
 from app.schemas.products import OfferOut, ProductOut
 
 
@@ -33,6 +34,7 @@ class BuildRequirements(BaseModel):
     excluded_brands: list[str] = Field(default_factory=list, max_length=20)
     max_store_count: int | None = Field(default=None, ge=1, le=8)
     workload_names: list[str] = Field(default_factory=list, max_length=20)
+    language: Literal["uk", "en", "pl", "ru"] = "ru"
 
     @field_validator("currency")
     @classmethod
@@ -49,6 +51,7 @@ class GenerateBuildRequest(BaseModel):
     budget: float | None = Field(default=None, ge=1500, le=500000)
     currency: str | None = Field(default=None, min_length=3, max_length=3)
     basket_mode: Literal["cheapest", "fewest_stores", "balanced"] = "balanced"
+    language: Literal["uk", "en", "pl", "ru"] | None = None
 
 
 class CompatibilityIssue(BaseModel):
@@ -87,6 +90,9 @@ class BuildOut(BaseModel):
     expires_at: datetime | None
     compatibility_status: Literal["compatible", "warning", "incompatible"]
     compatibility_issues: list[CompatibilityIssue]
+    bottleneck: BottleneckAssessment | None = None
+    estimated_peak_power_w: int = 0
+    recommended_psu_w: int = 0
     components: list[BuildComponentOut]
 
 
@@ -105,6 +111,13 @@ class ReplacementOption(BaseModel):
     is_compatible: bool
     issues: list[CompatibilityIssue]
     projected_total: Decimal
+    price_delta: Decimal = Decimal("0")
+    performance_delta_percent: float = 0
+    recommendation_group: Literal["cheaper_alternative", "smart_upgrade", "balanced", "other"] = (
+        "other"
+    )
+    recommendation_reason: str = ""
+    value_score: float = 0
 
 
 class ReplaceComponentRequest(BaseModel):
