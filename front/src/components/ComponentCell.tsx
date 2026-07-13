@@ -14,8 +14,11 @@ import {
   Mouse,
   BatteryWarning,
   MonitorPlay,
-  Plus
+  Plus,
+  Sparkles
 } from "lucide-react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import type { Component, AllCategory } from "@/data/builds";
 import { COMPONENT_LABELS } from "@/data/builds";
 import { useConfiguratorStore } from "@/store/configurator-store";
@@ -47,6 +50,7 @@ function formatPLN(value: number): string {
 type ComponentCellProps = {
   component?: Component;
   category: AllCategory;
+  reason?: string;
   onReplace: () => void;
 };
 
@@ -54,10 +58,12 @@ type ComponentCellProps = {
 export default function ComponentCell({
   component,
   category,
+  reason,
   onReplace,
 }: ComponentCellProps) {
   const language = useConfiguratorStore((s) => s.language);
   const t = messages[language];
+  const [showTooltip, setShowTooltip] = useState(false);
 
   const categoryLabel = COMPONENT_LABELS[category]?.[language] ?? category;
 
@@ -98,10 +104,32 @@ export default function ComponentCell({
 
   return (
     <div
-      className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-[#1e293b]
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+      className="group relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-[#1e293b]
                  bg-[#131B26]/80 p-4 backdrop-blur-xl transition-all duration-300
                  hover:border-indigo-500/40 hover:shadow-[0_0_24px_rgba(99,102,241,0.1)]"
     >
+      <AnimatePresence>
+        {showTooltip && reason && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-64 z-50 pointer-events-none"
+          >
+            <div className="relative rounded-xl border border-[#06b6d4]/30 bg-[#0f1520]/95 p-3 shadow-xl backdrop-blur-md">
+              <div className="flex items-start gap-2">
+                <Sparkles className="w-3.5 h-3.5 text-[#06b6d4] shrink-0 mt-0.5" />
+                <p className="text-xs text-white/90 leading-relaxed">{reason}</p>
+              </div>
+              <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 border-r border-b border-[#06b6d4]/30 bg-[#0f1520]/95" />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex flex-1 items-center gap-4">
         {/* ── Left side: Icon ───────────────────────────────────── */}
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-cyan-950/40 border border-cyan-900/50 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)]">

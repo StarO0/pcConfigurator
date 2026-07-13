@@ -2,14 +2,17 @@
 
 import { useConfiguratorStore } from "@/store/configurator-store";
 import Header from "@/components/Header";
-import PromptBar from "@/components/PromptBar";
+import AiChat from "@/components/AiChat";
+import ManualConfigurator from "@/components/ManualConfigurator";
 import { BuildCarousel } from "@/components/BuildCarousel";
 import { BottleneckWarning } from "@/components/BottleneckWarning";
 import ReplaceModal from "@/components/ReplaceModal";
+import AuthModal from "@/components/AuthModal";
+import SavedBuildsDrawer from "@/components/SavedBuildsDrawer";
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function Home() {
-  const showResults = useConfiguratorStore((s) => s.showResults);
+  const { showResults, appMode } = useConfiguratorStore();
 
   return (
     <main className="min-h-screen flex flex-col">
@@ -23,9 +26,9 @@ export default function Home() {
         <div className="absolute top-2/3 left-1/2 w-64 h-64 bg-cyan-600/5 rounded-full blur-[100px]" />
       </div>
 
-      {/* Prompt Section - always visible */}
-      <section className="pt-8">
-        <PromptBar />
+      {/* Main content area */}
+      <section className="pt-8 flex-1 flex flex-col">
+        {appMode === "ai" ? <AiChat /> : <ManualConfigurator />}
       </section>
 
       {/* Results Section */}
@@ -48,8 +51,10 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* Replace Modal */}
+      {/* Modals and Drawers */}
       <ReplaceModal />
+      <AuthModal />
+      <SavedBuildsDrawer />
 
       {/* Footer */}
       <footer className="mt-auto py-8 text-center">

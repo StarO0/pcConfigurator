@@ -35,6 +35,7 @@ export type BottleneckWarning = {
 
 type ConfiguratorState = {
   language: Language;
+  appMode: "configurator" | "ai";
   builds: Build[];
   currentBuildIndex: number;
   showResults: boolean;
@@ -43,6 +44,7 @@ type ConfiguratorState = {
   replaceModalOpen: boolean;
   replaceCategory: AllCategory | null;
   setLanguage: (lang: Language) => void;
+  setAppMode: (mode: "configurator" | "ai") => void;
   setCurrentBuild: (index: number) => void;
   nextBuild: () => void;
   prevBuild: () => void;
@@ -51,6 +53,7 @@ type ConfiguratorState = {
   closeReplaceModal: () => void;
   dismissBottleneck: () => void;
   triggerGenerate: () => void;
+  loadSavedBuild: (build: Build) => void;
 };
 
 function calculateBottleneck(build: Build): BottleneckWarning {
@@ -82,6 +85,7 @@ function calculateBottleneck(build: Build): BottleneckWarning {
 
 export const useConfiguratorStore = create<ConfiguratorState>((set, get) => ({
   language: "en",
+  appMode: "configurator" as const,
   builds: builds.map((b) => ({ ...b })),
   currentBuildIndex: 0,
   showResults: false,
@@ -91,6 +95,7 @@ export const useConfiguratorStore = create<ConfiguratorState>((set, get) => ({
   replaceCategory: null,
 
   setLanguage: (lang) => set({ language: lang }),
+  setAppMode: (mode) => set({ appMode: mode }),
 
   setCurrentBuild: (index) => set({ currentBuildIndex: index, bottleneckWarning: null }),
 
@@ -143,6 +148,18 @@ export const useConfiguratorStore = create<ConfiguratorState>((set, get) => ({
     set({ isLoading: true });
     setTimeout(() => {
       set({ isLoading: false, showResults: true });
-    }, 2000);
+    }, 1500);
+  },
+
+  loadSavedBuild: (build) => {
+    set((state) => {
+      const newBuilds = [...state.builds, build];
+      return {
+        builds: newBuilds,
+        currentBuildIndex: newBuilds.length - 1,
+        showResults: true,
+        bottleneckWarning: null,
+      };
+    });
   },
 }));

@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, Heart } from "lucide-react";
 import { useConfiguratorStore } from "@/store/configurator-store";
+import { useAuthStore } from "@/store/auth-store";
 import messages from "@/i18n/messages";
 import { FpsMeter } from "@/components/FpsMeter";
 import BuildCard from "@/components/BuildCard";
+import PowerBadge from "@/components/PowerBadge";
 
 /* ─── direction tracker (1 = forward, -1 = backward) ─── */
 const slideVariants = {
@@ -38,10 +40,26 @@ export function BuildCarousel() {
     setCurrentBuild,
     language,
   } = useConfiguratorStore();
+  const { saveBuild, isLoggedIn, openAuthModal } = useAuthStore();
 
   const t = messages[language];
   const [direction, setDirection] = useState(0);
+  const [savedMessage, setSavedMessage] = useState(false);
   const currentBuild = builds[currentBuildIndex];
+
+  // Calculate total wattage
+  const totalWatts = Object.values(currentBuild.components).reduce((sum, c) => sum + (c?.wattage ?? 0), 0);
+
+  function handleSave() {
+    if (!isLoggedIn) {
+      openAuthModal("login");
+      return;
+    }
+    const name = `${currentBuild.badge.label[language]} — ${currentBuild.totalPrice.toLocaleString()} zł`;
+    saveBuild(currentBuild, name);
+    setSavedMessage(true);
+    setTimeout(() => setSavedMessage(false), 2500);
+  }
 
   /* ─── navigation helpers ─── */
   const handlePrev = useCallback(() => {
@@ -124,15 +142,32 @@ export function BuildCarousel() {
                     <span className="text-sm font-medium text-emerald-400">Kompatybilność OK</span>
                   </div>
 
+                  {/* Power Badge */}
+                  {totalWatts > 0 && <PowerBadge watts={totalWatts} />}
+
                   {/* Button */}
-                  <button
-                    onClick={() => useConfiguratorStore.getState().triggerGenerate()}
-                    className="w-full py-3 px-4 rounded-xl font-bold text-white shadow-lg transition-all
-                               bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400
-                               active:scale-95 flex items-center justify-center gap-2"
-                  >
-                    {t.prompt.button} <ChevronRight className="w-4 h-4" />
-                  </button>
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={() => useConfiguratorStore.getState().triggerGenerate()}
+                      className="flex-1 py-3 px-4 rounded-xl font-bold text-white shadow-lg transition-all
+                                 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400
+                                 active:scale-95 flex items-center justify-center gap-2 text-sm"
+                    >
+                      {t.prompt.button} <ChevronRight className="w-4 h-4" />
+                    </button>
+                    
+                    <button
+                      onClick={handleSave}
+                      className="flex items-center justify-center w-12 rounded-xl bg-white/[0.05] border border-white/[0.08] hover:bg-white/[0.1] hover:border-pink-500/30 text-white/70 hover:text-pink-400 transition-all active:scale-95"
+                      title="Сохранить сборку"
+                    >
+                      {savedMessage ? (
+                        <Check className="w-5 h-5 text-emerald-400" />
+                      ) : (
+                        <Heart className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 {/* 2. FpsMeter */}

@@ -17,7 +17,7 @@ type BuildCardProps = {
 
 /* ── Component ────────────────────────────────────────────────── */
 export default function BuildCard({ build, buildIndex }: BuildCardProps) {
-  const openReplaceModal = useConfiguratorStore((s) => s.openReplaceModal);
+  const { openReplaceModal, language } = useConfiguratorStore();
 
   return (
     <motion.div
@@ -33,6 +33,7 @@ export default function BuildCard({ build, buildIndex }: BuildCardProps) {
             key={cat}
             component={comp}
             category={cat}
+            reason={build.componentReasons?.[cat]?.[language]}
             onReplace={() => openReplaceModal(cat)}
           />
         );
