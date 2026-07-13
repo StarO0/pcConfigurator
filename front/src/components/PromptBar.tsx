@@ -37,6 +37,33 @@ const placeholderExamples: Record<string, string[]> = {
   ],
 };
 
+const promptSuggestions: Record<string, string[]> = {
+  en: [
+    "Cyberpunk 2077 in 4K + OBS streaming",
+    "Blender + DaVinci 4K, silent",
+    "CS2 500 FPS on 1440p 240Hz",
+    "Home AI server + gaming",
+  ],
+  ru: [
+    "Cyberpunk 2077 в 4K + стриминг в OBS",
+    "Blender + DaVinci 4K, тихий",
+    "CS2 500 FPS на 1440p 240Hz",
+    "Домашний AI сервер + gaming",
+  ],
+  uk: [
+    "Cyberpunk 2077 в 4K + стрімінг в OBS",
+    "Blender + DaVinci 4K, тихий",
+    "CS2 500 FPS на 1440p 240Hz",
+    "Домашній AI сервер + gaming",
+  ],
+  pl: [
+    "Cyberpunk 2077 w 4K + streaming w OBS",
+    "Blender + DaVinci 4K, cichy",
+    "CS2 500 FPS na 1440p 240Hz",
+    "Domowy serwer AI + gaming",
+  ],
+};
+
 export default function PromptBar() {
   const language = useConfiguratorStore((s) => s.language);
   const isLoading = useConfiguratorStore((s) => s.isLoading);
@@ -53,6 +80,13 @@ export default function PromptBar() {
 
   // Typewriter effect
   const examples = placeholderExamples[language] ?? placeholderExamples.en;
+  const currentSuggestions = promptSuggestions[language] ?? promptSuggestions.en;
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setInputValue(suggestion);
+    setIsFocused(true);
+    inputRef.current?.focus();
+  };
 
   useEffect(() => {
     // Reset animation when language changes
@@ -173,6 +207,7 @@ export default function PromptBar() {
         {/* Input container */}
         <div className="relative flex items-center gap-3 rounded-2xl bg-[#0f0f18]/90 px-5 py-4 backdrop-blur-xl sm:py-5">
           <input
+            id="prompt-input"
             ref={inputRef}
             type="text"
             value={inputValue}
@@ -181,6 +216,7 @@ export default function PromptBar() {
             onBlur={() => setIsFocused(false)}
             placeholder={animatedPlaceholder || "..."}
             disabled={isLoading}
+            aria-label="Prompt input for AI"
             className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder-zinc-600 outline-none sm:text-base"
           />
 
@@ -190,7 +226,8 @@ export default function PromptBar() {
             disabled={isLoading}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-white shadow-lg shadow-violet-500/25 transition-all hover:shadow-violet-500/40 disabled:opacity-50 sm:h-11 sm:w-11"
+            aria-label="Generate build"
+            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#06b6d4] to-[#0284c7] text-white shadow-lg shadow-cyan-500/25 transition-all hover:shadow-cyan-500/40 disabled:opacity-50 sm:h-11 sm:w-11"
           >
             <AnimatePresence mode="wait">
               {isLoading ? (
@@ -217,7 +254,7 @@ export default function PromptBar() {
             </AnimatePresence>
 
             {/* Button glow */}
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] opacity-0 blur-xl transition-opacity hover:opacity-40" />
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-[#06b6d4] to-[#0284c7] opacity-0 blur-xl transition-opacity hover:opacity-40" />
           </motion.button>
         </div>
       </form>
@@ -236,7 +273,7 @@ export default function PromptBar() {
               {[0, 1, 2].map((i) => (
                 <motion.div
                   key={i}
-                  className="h-1.5 w-1.5 rounded-full bg-[#8b5cf6]"
+                  className="h-1.5 w-1.5 rounded-full bg-[#06b6d4]"
                   animate={{
                     y: [0, -6, 0],
                     opacity: [0.4, 1, 0.4],
@@ -255,15 +292,28 @@ export default function PromptBar() {
         )}
       </AnimatePresence>
 
-      {/* Generate button text below (for clarity) */}
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1, duration: 0.5 }}
-        className="mt-5 text-xs text-zinc-600"
-      >
-        {t.prompt.button} →
-      </motion.p>
+      {/* Suggestions */}
+      {!isLoading && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          className="mt-5 flex flex-wrap items-center justify-center gap-2 sm:justify-start"
+        >
+          <span className="text-xs text-zinc-500 font-medium mr-1">
+            {language === 'ru' ? 'Попробуй:' : language === 'en' ? 'Try:' : language === 'uk' ? 'Спробуй:' : 'Spróbuj:'}
+          </span>
+          {currentSuggestions.map((sug, idx) => (
+            <button
+              key={idx}
+              onClick={() => handleSuggestionClick(sug)}
+              className="px-3 py-1.5 rounded-full border border-white/5 bg-white/[0.02] text-xs text-zinc-400 hover:text-[#06b6d4] hover:bg-white/[0.04] hover:border-[#06b6d4]/30 transition-all duration-200"
+            >
+              {sug}
+            </button>
+          ))}
+        </motion.div>
+      )}
     </motion.section>
   );
 }

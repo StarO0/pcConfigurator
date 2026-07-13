@@ -8,6 +8,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://intellect-builds.lovable.app"),
   title: "AI PC Configurator | Сборка ПК с помощью ИИ",
   description:
     "AI-powered PC configurator. Describe your ideal computer and get 5 optimized builds with real prices from Polish stores. Поддержка 4 языков: EN, RU, UK, PL.",
@@ -18,6 +19,25 @@ export const metadata: Metadata = {
     "сборка компьютера",
     "konfigurator PC",
   ],
+  openGraph: {
+    title: "AI PC Configurator",
+    description: "Generate optimized PC builds using AI in seconds.",
+    url: "https://intellect-builds.lovable.app",
+    siteName: "AI PC Configurator",
+    locale: "en_US",
+    type: "website",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
 };
 
 export default function RootLayout({

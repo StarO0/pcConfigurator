@@ -6,7 +6,6 @@ import PromptBar from "@/components/PromptBar";
 import { BuildCarousel } from "@/components/BuildCarousel";
 import { BottleneckWarning } from "@/components/BottleneckWarning";
 import ReplaceModal from "@/components/ReplaceModal";
-import UpsellSection from "@/components/UpsellSection";
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function Home() {
@@ -14,6 +13,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen flex flex-col">
+      <h1 className="sr-only">AI PC Configurator - Generate optimized PC builds using Artificial Intelligence</h1>
       <Header />
 
       {/* Floating background orbs */}
@@ -44,15 +44,6 @@ export default function Home() {
               <BuildCarousel />
             </section>
 
-            {/* Divider */}
-            <div className="mx-auto max-w-5xl px-4">
-              <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-            </div>
-
-            {/* Upsell Peripherals */}
-            <section className="px-4 md:px-8 lg:px-16 py-12">
-              <UpsellSection />
-            </section>
           </motion.div>
         )}
       </AnimatePresence>

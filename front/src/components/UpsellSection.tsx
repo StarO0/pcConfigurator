@@ -95,6 +95,7 @@ export default function UpsellSection() {
         {canScrollLeft && (
           <button
             onClick={() => scroll("left")}
+            aria-label="Scroll left"
             className="absolute -left-2 sm:-left-4 md:-left-8 top-1/2 -translate-y-1/2 z-20
                        w-10 h-10 rounded-full flex items-center justify-center
                        bg-[#13131f]/90 border border-white/10 backdrop-blur-sm
@@ -109,6 +110,7 @@ export default function UpsellSection() {
         {canScrollRight && (
           <button
             onClick={() => scroll("right")}
+            aria-label="Scroll right"
             className="absolute -right-2 sm:-right-4 md:-right-8 top-1/2 -translate-y-1/2 z-20
                        w-10 h-10 rounded-full flex items-center justify-center
                        bg-[#13131f]/90 border border-white/10 backdrop-blur-sm
