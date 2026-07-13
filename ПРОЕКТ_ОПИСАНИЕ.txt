@@ -1,0 +1,176 @@
+============================================================
+  AI PC CONFIGURATOR — ОПИСАНИЕ ПРОЕКТА
+  Папка: c:\Users\Gleb\Desktop\pcconfig\
+  Дата: 2026-07-13
+============================================================
+
+ОБЩАЯ КОНЦЕПЦИЯ
+---------------
+Веб-приложение для подбора конфигурации ПК с двумя режимами работы:
+  1. Ручной конфигуратор (как Telemart/F.ua) — пользователь сам выбирает комплектующие
+  2. ИИ-конфигуратор — пользователь описывает задачу, ИИ генерирует 5 оптимальных сборок
+
+Поддержка 4 языков: English (EN), Русский (RU), Українська (UK), Polski (PL).
+Цены отображаются в польских злотых (PLN / zł).
+
+
+=== ФРОНТЕНД ===
+Папка: pcconfig\front\
+Технологии: Next.js 16.2.10, React 19, Tailwind CSS 4, TypeScript, Framer Motion, Zustand, Lucide React
+
+ЦВЕТОВАЯ СХЕМА (globals.css):
+  --bg-primary: #0b111a          (тёмно-синий фон)
+  --bg-card: rgba(19,27,38,0.6)  (glassmorphism карточки)
+  --accent-from: #06b6d4         (cyan/бирюзовый — основной)
+  --accent-to: #0ea5e9           (синий — вторичный)
+  --accent-secondary: #2dd4bf    (teal — вспомогательный)
+  Фиолетовый (#6366f1, #8b5cf6) используется во вторичных элементах (Header лого, модалки)
+
+КОМПОНЕНТЫ:
+  Header.tsx         — Залипающая шапка: лого, переключатель языка (EN/RU/UK/PL)
+  PromptBar.tsx      — Hero-секция: большой инпут с typewriter-эффектом + быстрые подсказки под ним
+  BuildCarousel.tsx  — Двухколоночная сетка: слева список компонентов, справа сайдбар (цена, FPS, AI-объяснение)
+  BuildCard.tsx      — Список компонентов текущей сборки (только перечисление ComponentCell)
+  ComponentCell.tsx  — Горизонтальная строка: иконка категории + название + цена + кнопка "Заменить/Добавить"
+  ReplaceModal.tsx   — Модалка замены: текущий компонент + магазины + вкладки (дешевле/апгрейд)
+  FpsMeter.tsx       — Блок ожидаемого FPS по играм + рабочие задачи (2 вкладки)
+  AiExplanation.tsx  — Карточка "Почему эта конфигурация?" с typing-анимацией
+  BottleneckWarning.tsx — Баннер предупреждения о CPU/GPU баттлнеке
+  UpsellSection.tsx  — Горизонтальная карусель рекомендованной периферии (в коде есть, убрана со страницы)
+
+ДАННЫЕ (src/data/):
+  builds.ts        — 5 моковых сборок (optimal, economy, futureproof, amd, intel_nvidia)
+                     Каждая сборка: 8 компонентов (CPU/GPU/RAM/SSD/MB/PSU/Case/Cooler)
+                     + опциональная периферия (monitor/keyboard/mouse/ups)
+  alternatives.ts  — Альтернативные компоненты для замены (дешевле/дороже)
+  benchmarks.ts    — FPS-бенчмарки по играм и рабочим задачам для каждой сборки
+  peripherals.ts   — Мониторы, клавиатуры, мыши, ИБП для upsell-секции
+
+ХРАНИЛИЩЕ (Zustand, src/store/):
+  configurator-store.ts — Основной стор:
+    - language: "en"|"ru"|"uk"|"pl"
+    - builds: Build[] (5 сборок)
+    - currentBuildIndex: number
+    - showResults: boolean
+    - isLoading: boolean
+    - bottleneckWarning: { type, percentage, recommendation } | null
+    - replaceModalOpen, replaceCategory
+    - setLanguage, nextBuild, prevBuild, replaceComponent, openReplaceModal, triggerGenerate
+
+I18N (src/i18n/messages.ts):
+  4 языка × все строки интерфейса: header, prompt, carousel, build, component, replace, bottleneck, upsell
+
+FLOW ПОЛЬЗОВАТЕЛЯ (текущий):
+  1. Открывает сайт → видит PromptBar с анимированным плейсхолдером
+  2. Вводит промпт (напр. "Gaming PC 5000 zł") → нажимает кнопку
+  3. 2 сек загрузки → появляется BuildCarousel с 5 сборками
+  4. Листает сборки стрелками/точками
+  5. Кликает "Заменить" → ReplaceModal с альтернативами
+  6. FpsMeter показывает ожидаемый FPS в популярных играх
+
+ЗАПЛАНИРОВАННЫЕ ФУНКЦИИ (планируемые доработки):
+  - Переключатель "Конфигуратор / ИИ" в хедере
+  - Ручной конфигуратор (выбор комплектующих из списка)
+  - Аккаунты пользователей + сохранение сборок (localStorage)
+  - Ограничение: ИИ недоступен без аккаунта
+  - Диалог с ИИ (уточняющие вопросы, история чата)
+  - Подсказки ИИ при наведении на компоненты
+  - Показатель энергопотребления сборки
+
+
+=== БЭКЕНД ===
+Папка: pcconfig\pc-builder-backend\
+Технологии: Python 3.12+, FastAPI 0.116, SQLAlchemy 2.0 (async), PostgreSQL/SQLite, Redis, Celery
+
+ЗАПУСК (DEV):
+  uvicorn app.main:app --reload
+  Swagger UI: http://localhost:8000/docs
+  API prefix: /api/v1
+
+БАЗЫ ДАННЫХ:
+  - SQLite (разработка): pc_builder.db (auto-create при старте)
+  - PostgreSQL (продакшен): через DATABASE_URL в .env
+  - Redis: кэш промптов, сессии, rate limiting, очереди Celery
+  - Alembic: миграции схемы
+
+МОДЕЛИ ДАННЫХ (app/models/entities.py):
+  User            — id, email, display_name, password_hash, role, is_verified, created_at
+  AuthSession     — refresh_token_hash, ip_address, expires_at (JWT rotation)
+  OneTimeToken    — для email-подтверждения и сброса пароля
+  Store           — магазины (X-Kom, Morele, Komputronik, etc.)
+  Product         — id, name, category, brand, model, specs (JSON), slug
+  Offer           — product_id, store_id, price, url, in_stock, updated_at
+  ProductBenchmark — product_id, game/task, fps/time, resolution, preset
+  PriceHistory    — цены за период
+  Build           — owner_id, profile, prompt, is_saved, visibility, access_token_hash, expires_at
+  BuildComponent  — build_id, category, product_id, selected_offer_id
+  BuildRevision   — снапшоты версий сборки
+  FavoriteProduct — user_id + product_id
+
+API ЭНДПОИНТЫ (/api/v1):
+  /auth/register         POST — регистрация
+  /auth/login            POST — вход, выдача JWT access+refresh
+  /auth/refresh          POST — обновление токена
+  /auth/logout           POST — выход
+  /auth/me               GET  — профиль пользователя
+  /builds/generate       POST — ИИ-генерация 5 сборок по промпту
+  /builds/               GET  — список сборок пользователя
+  /builds/{id}           GET  — получить сборку
+  /builds/{id}/save      POST — сохранить гостевую сборку в аккаунт
+  /builds/{id}/component PUT  — заменить компонент
+  /builds/{id}/reprice   POST — пересчитать цены
+  /builds/{id}/clone     POST — клонировать сборку
+  /builds/{id}/compare   POST — сравнить 2 сборки
+  /builds/{id}/revisions GET  — история изменений
+  /products/             GET  — каталог с фильтрами и пагинацией
+  /products/{id}         GET  — деталь товара
+  /products/{id}/favorites POST/DELETE — добавить/убрать из избранного
+  /benchmarks/           GET  — бенчмарки продуктов
+  /analysis/workloads    POST — анализ нагрузки и рекомендации
+  /notifications/        GET  — уведомления о ценах
+  /admin/                GET/POST — управление товарами, магазинами, пользователями
+  /health                GET  — health check
+
+СЕРВИСЫ (app/services/):
+  build_generator.py   — Beam Search по 5 профилям (optimal/economy/upgrade_ready/amd/intel_nvidia)
+                         Подбирает компоненты, оптимизирует цену, проверяет совместимость
+  compatibility.py     — Детальная проверка: сокет CPU↔MB, TDP кулера, размеры корпуса, PCIe lanes, RAM типы
+  ai/service.py        — AI-оркестратор с fallback между провайдерами
+  ai/rules.py          — Детерминированный парсер промпта (правила, regex, keyword matching)
+  ai/openai_provider.py — GPT интеграция
+  ai/gemini_provider.py — Gemini интеграция
+  ai/deepseek_provider.py — DeepSeek интеграция
+  cache.py             — Redis обёртка (get/set JSON, distributed locks)
+  pricing.py           — Оптимизация корзины (минимальная цена, 1 магазин, баланс)
+  recommendations.py   — Smart replacements: cheaper/upgrade/balance
+  i18n.py              — Мультиязычные тексты для AI-объяснений
+  bottleneck.py        — CPU/GPU баттлнек-анализ
+  performance.py       — FPS/render-time оценки
+  parsers/             — CSV/JSON/API адаптеры для импорта предложений магазинов
+
+AI КОНФИГУРАЦИЯ (.env):
+  AI_PROVIDER=rules          (по умолчанию — детерминированные правила)
+  OPENAI_API_KEY=...         (для GPT)
+  GEMINI_API_KEY=...         (для Gemini 2.5 Flash)
+  DEEPSEEK_API_KEY=...       (для DeepSeek Chat)
+  AI_FALLBACK_PROVIDER=rules (запасной провайдер при ошибке)
+
+CORS: http://localhost:3000 уже добавлен в CORS_ORIGINS — фронт и бэк готовы к совместной работе.
+
+
+=== ИНФРАСТРУКТУРА ===
+  Dockerfile + docker-compose.yml    — dev-окружение (API + PostgreSQL + Redis + Celery)
+  docker-compose.prod.yml            — production с Nginx SSL
+  deploy/                            — nginx.conf, ssl-сертификаты
+  Makefile                           — удобные команды (make dev, make migrate, make seed)
+  alembic/                           — миграции БД
+  openapi.json                       — полная OpenAPI 3.1 спецификация (~189KB)
+
+
+=== ТЕКУЩИЙ СТАТУС ===
+  - Бэкенд: архитектурно полный, production-ready
+  - Фронтенд: работающий MVP с моковыми данными
+  - Интеграция фронт↔бэк: НЕ ВЫПОЛНЕНА (фронт использует static data)
+  - Реальные данные магазинов: отсутствуют (нужны API/CSV фиды)
+
+============================================================
