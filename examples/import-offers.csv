@@ -1,0 +1,2 @@
+title;store_slug;external_id;url;price;shipping_price;currency;in_stock;product_sku;ean;mpn;brand;category
+AMD Ryzen 7 9700X;manual-import;offer-9700x-001;https://shop.example.org/products/9700x;1499.00;0;PLN;true;MY-CPU-9700X;0730143315289;100-100001404WOF;AMD;cpu

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" role="img" aria-labelledby="title desc">
+  <title id="title">Изображение товара</title>
+  <desc id="desc">Локальная резервная иллюстрация для товара без доступной фотографии.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e2e8f0"/>
+      <stop offset="1" stop-color="#cbd5e1"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="420" rx="36" fill="url(#bg)"/>
+  <rect x="190" y="105" width="260" height="210" rx="24" fill="#0f172a" opacity=".92"/>
+  <circle cx="320" cy="210" r="70" fill="#22d3ee" opacity=".22"/>
+  <path d="M278 210h84M320 168v84" stroke="#67e8f9" stroke-width="18" stroke-linecap="round"/>
+  <text x="320" y="360" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" font-weight="700" fill="#334155">PC CATALOG</text>
+</svg>

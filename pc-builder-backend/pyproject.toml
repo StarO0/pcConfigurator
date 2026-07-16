@@ -1,0 +1,22 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = ["migrations/versions", ".venv", "__pycache__", ".pytest_cache", ".ruff_cache"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC", "C4", "SIM", "RUF"]
+ignore = ["B008", "E501", "RUF012", "RUF001", "SIM102"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["app/workers/*", "app/scripts/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true

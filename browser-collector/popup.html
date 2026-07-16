@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>PC Catalog Collector</title>
+    <style>
+      body { width: 360px; margin: 0; padding: 18px; color: #e2e8f0; background: #08111d; font: 14px/1.45 system-ui, sans-serif; }
+      h1 { margin: 0 0 4px; font-size: 18px; } p { margin: 0 0 14px; color: #94a3b8; }
+      label { display: block; margin-top: 10px; color: #cbd5e1; font-size: 12px; }
+      input, select { box-sizing: border-box; width: 100%; margin-top: 4px; padding: 9px 10px; border: 1px solid #26364b; border-radius: 8px; color: #e2e8f0; background: #0d1a2a; }
+      button { width: 100%; margin-top: 14px; padding: 11px; border: 0; border-radius: 9px; color: #052e2b; background: #34d399; font-weight: 800; cursor: pointer; }
+      button.secondary { margin-top: 8px; color: #bae6fd; background: #0c4a6e; }
+      pre { max-height: 170px; overflow: auto; white-space: pre-wrap; word-break: break-word; margin: 12px 0 0; padding: 10px; border-radius: 8px; background: #0d1a2a; font-size: 11px; }
+      .error { color: #fca5a5; }
+    </style>
+  </head>
+  <body>
+    <h1>PC Catalog Collector</h1>
+    <p>Читает JSON-LD, meta-теги и таблицу характеристик открытой страницы.</p>
+    <label>Категория
+      <select id="category">
+        <option value="">Определить автоматически</option><option value="cpu">Процессор</option>
+        <option value="motherboard">Материнская плата</option><option value="gpu">Видеокарта</option>
+        <option value="ram">Оперативная память</option><option value="storage">Накопитель</option>
+        <option value="psu">Блок питания</option><option value="case">Корпус</option>
+        <option value="cooler">Охлаждение</option><option value="monitor">Монитор</option>
+        <option value="mouse">Мышь</option><option value="keyboard">Клавиатура</option>
+        <option value="headphones">Наушники</option><option value="webcam">Камера</option>
+        <option value="accessory">Другое</option>
+      </select>
+    </label>
+    <label>Цена (если сайт не отдал её автоматически)<input id="price" inputmode="decimal" placeholder="например, 749,00" /></label>
+    <button id="scan">Прочитать страницу</button>
+    <button id="save" class="secondary" disabled>Скачать JSON для импорта</button>
+    <pre id="result">Откройте карточку товара и нажмите «Прочитать страницу».</pre>
+    <script src="popup.js"></script>
+  </body>
+</html>

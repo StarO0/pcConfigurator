@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "PC Catalog Collector",
+  "version": "1.0.0",
+  "description": "Сохраняет открытую карточку товара в JSON для автономного PC Configurator.",
+  "permissions": ["activeTab", "scripting", "downloads"],
+  "action": {
+    "default_title": "Сохранить товар",
+    "default_popup": "popup.html"
+  }
+}
