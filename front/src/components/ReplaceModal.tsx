@@ -20,6 +20,9 @@ export default function ReplaceModal() {
     currentBuildIndex,
     builds,
     language,
+    replacementOptions,
+    replacementLoading,
+    replacementError,
   } = useConfiguratorStore();
 
   const [activeTab, setActiveTab] = useState<Tab>("cheaper");
@@ -45,20 +48,22 @@ export default function ReplaceModal() {
       .filter((p) => p.category === replaceCategory)
       .map((p) => ({
         id: p.id,
-        category: p.category as any,
+        category: p.category as AllCategory,
         name: p.name,
         price: p.price,
         shopLinks: [{ shop: "Store", url: p.shopUrl, price: p.price }],
         specs: { Info: p.description[language] ?? p.description.en },
       }));
   } else {
-    items = activeTab === "cheaper"
-      ? categoryAlternatives.cheaper
-      : categoryAlternatives.upgrade;
+    items = currentBuild.backendId
+      ? replacementOptions
+      : activeTab === "cheaper"
+        ? categoryAlternatives.cheaper
+        : categoryAlternatives.upgrade;
   }
 
   const handleSelect = (component: Component) => {
-    replaceComponent(currentBuildIndex, replaceCategory as any, component);
+    void replaceComponent(currentBuildIndex, replaceCategory as AllCategory, component);
   };
 
   return (
@@ -208,7 +213,13 @@ export default function ReplaceModal() {
 
             {/* ── List ───────────────────────────────── */}
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3 scrollbar-thin scrollbar-thumb-white/10">
-              {items.length === 0 ? (
+              {replacementLoading ? (
+                <div className="py-16 text-center text-sm text-cyan-400">Загружаем совместимые варианты…</div>
+              ) : replacementError ? (
+                <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
+                  {replacementError}
+                </div>
+              ) : items.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-gray-500">
                   <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
                     <X className="w-5 h-5" />

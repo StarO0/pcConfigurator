@@ -1,11 +1,13 @@
 "use client";
 
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Cpu, User, LogOut, Heart } from "lucide-react";
 import { useConfiguratorStore } from "@/store/configurator-store";
 import { useAuthStore } from "@/store/auth-store";
 import messages, { Language } from "@/i18n/messages";
 import ModeSlider from "./ModeSlider";
+import { useWorkspaceStore } from "@/store/workspace-store";
 
 const languages: { code: Language; flag: string; label: string }[] = [
   { code: "en", flag: "🇬🇧", label: "EN" },
@@ -16,8 +18,13 @@ const languages: { code: Language; flag: string; label: string }[] = [
 
 export default function Header() {
   const { language, setLanguage, appMode, setAppMode } = useConfiguratorStore();
-  const { user, isLoggedIn, openAuthModal, openSavedBuilds, logout } = useAuthStore();
+  const { user, isLoggedIn, openAuthModal, openSavedBuilds, logout, ensureAccessToken } = useAuthStore();
   const t = messages[language];
+  const section = useWorkspaceStore((state) => state.section);
+
+  useEffect(() => {
+    if (isLoggedIn) void ensureAccessToken();
+  }, [ensureAccessToken, isLoggedIn]);
 
   return (
     <motion.header
@@ -47,7 +54,9 @@ export default function Header() {
 
           {/* Center: Mode Slider */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:block">
+            {section === "builder" && (
             <ModeSlider mode={appMode} onChange={setAppMode} />
+            )}
           </div>
 
           {/* Right side: Language + Account */}
@@ -109,7 +118,7 @@ export default function Header() {
                     </button>
                     <div className="h-px w-full bg-white/[0.06] my-1" />
                     <button
-                      onClick={logout}
+                      onClick={() => void logout()}
                       className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-red-500/10 transition-colors"
                     >
                       <LogOut className="w-4 h-4" />
@@ -128,6 +137,10 @@ export default function Header() {
             )}
           </div>
         </div>
+
+        {section === "builder" && <div className="flex justify-center px-4 pb-3 md:hidden">
+          <ModeSlider mode={appMode} onChange={setAppMode} />
+        </div>}
 
         {/* Bottom border glow */}
         <div className="absolute bottom-0 left-0 right-0 h-px">

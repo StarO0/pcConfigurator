@@ -17,6 +17,8 @@ def store_to_schema(store) -> StoreOut:
         base_url=store.base_url,
         country=store.country,
         is_active=store.is_active,
+        parser_type=store.parser_type,
+        parser_config=store.parser_config or {},
         last_success_at=store.last_success_at,
     )
 
@@ -37,6 +39,7 @@ def offer_to_schema(offer: Offer) -> OfferOut:
         currency=offer.currency,
         in_stock=offer.in_stock,
         stock_quantity=offer.stock_quantity,
+        source_metadata=offer.source_metadata or {},
         fetched_at=offer.fetched_at,
         stale=fetched < stale_before,
     )
@@ -56,6 +59,10 @@ def product_to_schema(product: Product) -> ProductOut:
         ean=product.ean,
         mpn=product.mpn,
         image_url=product.image_url,
+        gallery_urls=product.gallery_urls or [],
+        canonical_source=product.canonical_source,
+        canonical_id=product.canonical_id,
+        source_url=product.source_url,
         release_date=product.release_date,
         performance_score=product.performance_score,
         noise_score=product.noise_score,

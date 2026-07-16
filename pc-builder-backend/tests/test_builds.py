@@ -109,3 +109,33 @@ def test_replacement_save_publish_clone_and_trash(client, auth_headers):
     assert deleted.status_code == 200
     restored = client.post(f"/api/v1/builds/{clone_id}/restore", headers=auth_headers)
     assert restored.status_code == 200
+
+
+def test_manual_build_uses_catalog_compatibility_and_is_saved(client, auth_headers):
+    generated = generate(client, "Игровой компьютер до 6000 PLN")
+    components = {
+        item["category"]: item["product"]["id"] for item in generated["builds"][0]["components"]
+    }
+    checked = client.post(
+        "/api/v1/catalog/compatibility",
+        json={"components": components, "language": "ru"},
+    )
+    assert checked.status_code == 200, checked.text
+    assert checked.json()["status"] != "incompatible"
+
+    created = client.post(
+        "/api/v1/builds/manual",
+        headers=auth_headers,
+        json={
+            "name": "Ручная тестовая сборка",
+            "components": components,
+            "currency": "PLN",
+            "language": "ru",
+        },
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["profile"] == "manual"
+    assert created.json()["is_saved"] is True
+    assert len(created.json()["components"]) == 8
+    saved = client.get("/api/v1/builds/saved/me/list", headers=auth_headers)
+    assert any(item["id"] == created.json()["id"] for item in saved.json())

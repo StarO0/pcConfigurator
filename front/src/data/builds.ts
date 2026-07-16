@@ -6,7 +6,7 @@ export type ShopLink = {
 
 export type Component = {
   id: string;
-  category: ComponentCategory;
+  category: AllCategory;
   name: string;
   price: number;
   shopLinks: ShopLink[];
@@ -30,8 +30,24 @@ export type ComponentCategory =
 export type PeripheralCategory = "monitor" | "keyboard" | "mouse" | "ups";
 export type AllCategory = ComponentCategory | PeripheralCategory;
 
+export type BuildBottleneck = {
+  status: "balanced" | "cpu_limited" | "gpu_limited";
+  severity: "none" | "info" | "warning" | "critical";
+  estimatedPercent: number;
+  message: string;
+  recommendedProduct?: string;
+};
+
 export type Build = {
   id: string;
+  backendId?: string;
+  accessToken?: string;
+  version?: number;
+  name?: string;
+  visibility?: "private" | "unlisted" | "public";
+  publicSlug?: string;
+  compatibilityStatus?: "compatible" | "warning" | "incompatible";
+  bottleneck?: BuildBottleneck;
   category: BuildCategory;
   components: Record<ComponentCategory, Component> & Partial<Record<PeripheralCategory, Component>>;
   totalPrice: number;
@@ -64,8 +80,7 @@ export const COMPONENT_LABELS: Record<AllCategory, Record<string, string>> = {
 };
 
 export const CATEGORY_ORDER: AllCategory[] = [
-  "cpu", "gpu", "ram", "ssd", "motherboard", "psu", "case", "cooler",
-  "monitor", "keyboard", "mouse", "ups"
+  "cpu", "gpu", "ram", "ssd", "motherboard", "psu", "case", "cooler"
 ];
 
 const builds: Build[] = [
@@ -228,12 +243,6 @@ const builds: Build[] = [
     componentReasons: {
       cpu: { en: "Ryzen 5 7500F is CPU-only (no iGPU) so costs less, perfect pairing for a dedicated GPU budget build.", ru: "Ryzen 5 7500F без встроенной графики стоит дешевле — идеально для бюджетной сборки с дискретной видеокартой.", uk: "Ryzen 5 7500F без інтегрованої графіки коштує менше.", pl: "Ryzen 5 7500F bez iGPU jest tańszy — idealne do budżetowego zestawu z dedykowaną kartą." },
       gpu: { en: "RX 7700 XT delivers 1080p Ultra and 1440p Medium at minimal cost. Best price-per-frame in this budget range.", ru: "RX 7700 XT обеспечивает Ultra 1080p и Medium 1440p за минимальные деньги. Лучшая цена за кадр в бюджетном диапазоне.", uk: "RX 7700 XT забезпечує Ultra 1080p та Medium 1440p за мінімальну ціну.", pl: "RX 7700 XT zapewnia Ultra 1080p i Medium 1440p za minimalny koszt. Najlepszy stosunek ceny do FPS." },
-      ram: { en: "16GB DDR5 is enough for most games today, and saves money without losing speed.", ru: "16 ГБ DDR5 достаточно для большинства игр сегодня, экономит бюджет без потери скорости.", uk: "16 ГБ DDR5 достатньо для більшості ігор сьогодні, економить бюджет.", pl: "16 GB DDR5 wystarcza do większości gier, oszczędzając budżet bez utraty prędkości." },
-      ssd: { en: "1TB PCIe 4.0 drive provides plenty of fast storage for OS and games on a budget.", ru: "1 ТБ PCIe 4.0 диск дает много быстрой памяти для ОС и игр в рамках бюджета.", uk: "1 ТБ PCIe 4.0 диск дає багато швидкої пам'яті для ОС і ігор.", pl: "Dysk 1 TB PCIe 4.0 zapewnia dużo szybkiej pamięci na system i gry w budżecie." },
-      motherboard: { en: "B650M keeps costs down while still supporting PCIe 4.0 and all AM5 CPUs for future upgrades.", ru: "Плата B650M снижает стоимость, поддерживая PCIe 4.0 и все процессоры AM5 для апгрейда.", uk: "Плата B650M знижує вартість, підтримуючи PCIe 4.0 та всі процесори AM5.", pl: "Płyta B650M obniża koszty, zachowując obsługę PCIe 4.0 i wszystkich procesorów AM5." },
-      psu: { en: "550W is perfectly sufficient for this efficient combo, keeping the price as low as possible.", ru: "550W идеально хватает для этой энергоэффективной связки, сохраняя низкую цену.", uk: "550W ідеально вистачає для цієї енергоефективної зв'язки.", pl: "550W w zupełności wystarcza dla tego wydajnego zestawu, utrzymując niską cenę." },
-      case: { en: "Compact and affordable case with good mesh airflow so components stay cool.", ru: "Компактный и доступный корпус с хорошим сетчатым обдувом, чтобы детали оставались холодными.", uk: "Компактний і доступний корпус з хорошим сітчастим обдувом.", pl: "Kompaktowa i tania obudowa z dobrym przepływem powietrza przez siatkę." },
-      cooler: { en: "Affordable tower cooler that handles the 65W Ryzen easily, much better than the stock cooler.", ru: "Доступный башенный кулер, который легко справляется с 65W Ryzen, намного лучше стокового.", uk: "Доступний баштовий кулер, який легко справляється з 65W Ryzen.", pl: "Tanie chłodzenie wieżowe, które łatwo radzi sobie z Ryzenem 65W, znacznie lepsze niż boxowe." },
     },
     components: {
       cpu: {
@@ -369,12 +378,6 @@ const builds: Build[] = [
     componentReasons: {
       cpu: { en: "Ryzen 9 9900X's 12 cores are overkill for gaming today but essential for 4K video editing, 3D rendering, and AI tasks.", ru: "12 ядер Ryzen 9 9900X — избыточны для игр, но незаменимы для монтажа 4K, 3D-рендеринга и ИИ-задач.", uk: "12 ядер Ryzen 9 9900X незамінні для монтажу 4K та 3D-рендерингу.", pl: "12 rdzeni Ryzen 9 9900X to nadmiar dla gier, ale niezbędne do edycji 4K i renderingu 3D." },
       gpu: { en: "RTX 5070 Ti with 16GB VRAM handles 4K gaming and AI workloads. The extra VRAM future-proofs against upcoming game demands.", ru: "RTX 5070 Ti с 16 ГБ VRAM справляется с 4K играми и ИИ-задачами. Запас VRAM защищает от будущих требований.", uk: "RTX 5070 Ti з 16 ГБ VRAM впорається з 4K іграми та ІІ-задачами.", pl: "RTX 5070 Ti z 16 GB VRAM obsługuje gry 4K i obciążenia AI. Extra VRAM zabezpiecza na przyszłość." },
-      ram: { en: "6400MHz DDR5 ensures you get the absolute maximum performance from the CPU, with tight timings.", ru: "6400 МГц DDR5 гарантирует максимальную производительность процессора благодаря низким таймингам.", uk: "6400 МГц DDR5 гарантує максимальну продуктивність процесора.", pl: "6400 MHz DDR5 zapewnia maksymalną wydajność procesora dzięki niskim opóźnieniom." },
-      ssd: { en: "Samsung 990 Pro is top-tier PCIe 4.0, maxing out the interface speed for unmatched responsiveness.", ru: "Samsung 990 Pro — топовый PCIe 4.0 накопитель, выжимающий максимум скорости интерфейса.", uk: "Samsung 990 Pro — топовий PCIe 4.0 накопичувач, вичавлює максимум швидкості.", pl: "Samsung 990 Pro to najwyższej klasy dysk PCIe 4.0, wyciskający maksimum prędkości." },
-      motherboard: { en: "X870 provides immense power delivery and maximum PCIe lanes for multiple GPUs or NVMe drives.", ru: "Чипсет X870 дает мощную систему питания и максимум PCIe-линий для нескольких GPU или NVMe.", uk: "Чипсет X870 дає потужну систему живлення та максимум PCIe-ліній.", pl: "Chipset X870 zapewnia potężne zasilanie i maksimum linii PCIe dla wielu GPU lub NVMe." },
-      psu: { en: "1000W Platinum PSU gives top efficiency and huge headroom for heavy overclocking or future GPUs.", ru: "Блок питания 1000W Platinum дает высшую эффективность и огромный запас для разгона и будущих GPU.", uk: "Блок живлення 1000W Platinum дає вищу ефективність і величезний запас.", pl: "Zasilacz 1000W Platinum daje najwyższą wydajność i ogromny zapas na podkręcanie i przyszłe GPU." },
-      case: { en: "Fractal Torrent dominates thermal charts. Its massive front fans supply unparalleled fresh air.", ru: "Fractal Torrent доминирует в тестах охлаждения. Огромные передние кулеры дают беспрецедентный поток воздуха.", uk: "Fractal Torrent домінує в тестах охолодження. Величезні передні кулери.", pl: "Fractal Torrent dominuje w testach chłodzenia. Ogromne wentylatory na przodzie dają bezprecedensowy przepływ powietrza." },
-      cooler: { en: "Massive air cooler matching high-end AIO water coolers in performance, with zero pump noise.", ru: "Огромный воздушный кулер на уровне топовых водянок, но без шума помпы.", uk: "Величезний повітряний кулер на рівні топових водянок, але без шуму помпи.", pl: "Ogromne chłodzenie powietrzne na poziomie najlepszych AIO, ale bez hałasu pompy." },
     },
     components: {
       cpu: {
@@ -510,12 +513,6 @@ const builds: Build[] = [
     componentReasons: {
       cpu: { en: "Ryzen 7 9700X is the best AMD mid-range CPU — 8 cores, Zen 5 IPC improvements, and excellent single-thread performance.", ru: "Ryzen 7 9700X — лучший AMD процессор среднего класса: 8 ядер, IPC Zen 5 и отличная однопоточная производительность.", uk: "Ryzen 7 9700X — найкращий AMD процесор середнього класу.", pl: "Ryzen 7 9700X to najlepszy AMD mid-range — 8 rdzeni, Zen 5 IPC i doskonała wydajność jednowątkowa." },
       gpu: { en: "RX 9070 XT is AMD's answer to RTX 5070 — matching rasterization performance at a better price with 16GB GDDR6.", ru: "RX 9070 XT — ответ AMD на RTX 5070: сопоставимая растеризация по лучшей цене с 16 ГБ GDDR6.", uk: "RX 9070 XT — відповідь AMD на RTX 5070 з кращою ціною та 16 ГБ GDDR6.", pl: "RX 9070 XT to odpowiedź AMD na RTX 5070 — porównywalna wydajność w lepszej cenie z 16 GB GDDR6." },
-      ram: { en: "AMD EXPO optimized RAM guarantees stability and peak performance with the Ryzen CPU out of the box.", ru: "ОЗУ с оптимизацией AMD EXPO гарантирует стабильность и максимум производительности с Ryzen из коробки.", uk: "ОЗП з оптимізацією AMD EXPO гарантує стабільність та максимум продуктивності з Ryzen.", pl: "RAM zoptymalizowany pod AMD EXPO gwarantuje stabilność i maksymalną wydajność z Ryzenem po wyjęciu z pudełka." },
-      ssd: { en: "Extremely fast SN850X loads large open-world games almost instantly, a great high-end choice.", ru: "Очень быстрый SN850X загружает большие открытые миры почти мгновенно, отличный выбор топового уровня.", uk: "Дуже швидкий SN850X завантажує великі відкриті світи майже миттєво.", pl: "Bardzo szybki SN850X ładuje duże otwarte światy niemal natychmiast, świetny wybór klasy high-end." },
-      motherboard: { en: "Premium B650 board with great VRMs, meaning it can easily handle future CPU upgrades.", ru: "Премиальная плата B650 с отличным питанием, легко справится с будущими апгрейдами процессора.", uk: "Преміальна плата B650 з відмінним живленням, легко впорається з майбутніми апгрейдами.", pl: "Płyta B650 premium z doskonałym zasilaniem, łatwo poradzi sobie z przyszłymi upgradami procesora." },
-      psu: { en: "850W ensures that transient power spikes from the high-end AMD GPU are handled smoothly.", ru: "850W гарантирует, что скачки потребления от мощной видеокарты AMD будут сглажены без проблем.", uk: "850W гарантує, що стрибки споживання від потужної відеокарти AMD будуть згладжені без проблем.", pl: "850W gwarantuje, że skoki poboru mocy od potężnej karty AMD zostaną gładko obsłużone." },
-      case: { en: "Lancool III has incredible build quality, plenty of space, and includes three premium 140mm fans.", ru: "Lancool III имеет невероятное качество сборки, много места и три премиальных 140мм кулера в комплекте.", uk: "Lancool III має неймовірну якість збірки, багато місця та три преміальні 140мм кулери.", pl: "Lancool III ma niesamowitą jakość wykonania, dużo miejsca i trzy wentylatory 140mm premium w zestawie." },
-      cooler: { en: "Dual tower cooler keeps the Ryzen 7 chilly even under heavy multi-core loads, and looks great.", ru: "Двухбашенный кулер держит Ryzen 7 холодным даже под тяжелой нагрузкой на все ядра, и отлично выглядит.", uk: "Двобаштовий кулер тримає Ryzen 7 холодним навіть під важким навантаженням на всі ядра.", pl: "Chłodzenie dwuwieżowe trzyma Ryzena 7 w chłodzie nawet pod dużym obciążeniem wielu rdzeni i świetnie wygląda." },
     },
     components: {
       cpu: {
@@ -651,12 +648,6 @@ const builds: Build[] = [
     componentReasons: {
       cpu: { en: "Core Ultra 7 265K offers Intel's top single-thread IPC for gaming plus strong multi-thread for content creation.", ru: "Core Ultra 7 265K предлагает лучший IPC Intel для гейминга и сильную многопоточность для создания контента.", uk: "Core Ultra 7 265K пропонує найкращий IPC Intel для гейінгу.", pl: "Core Ultra 7 265K oferuje najlepszy IPC Intela do grania i wydajność wielowątkową do tworzenia treści." },
       gpu: { en: "RTX 5070 Ti paired with Intel maximizes DLSS 4 and multi-frame generation, especially effective at 4K with DLSS Quality.", ru: "RTX 5070 Ti с Intel максимизирует DLSS 4 и мультикадровую генерацию — особенно эффективно при 4K с DLSS Quality.", uk: "RTX 5070 Ti з Intel максимізує DLSS 4 та мультикадрову генерацію.", pl: "RTX 5070 Ti z Intelem maksymalizuje DLSS 4 i multi-frame generation, szczególnie w 4K z DLSS Quality." },
-      ram: { en: "Fast DDR5 memory tailored for Intel XMP, pushing CPU gaming performance to the absolute limit.", ru: "Быстрая DDR5 с профилем Intel XMP выводит игровую производительность процессора на абсолютный максимум.", uk: "Швидка DDR5 з профілем Intel XMP виводить ігрову продуктивність процесора на абсолютний максимум.", pl: "Szybka pamięć DDR5 z profilem Intel XMP, wyciskająca wydajność w grach do granic możliwości." },
-      ssd: { en: "Gen5 SSD provides overkill speeds for those who transfer massive files for video editing constantly.", ru: "Gen5 SSD дает избыточные скорости для тех, кто постоянно перемещает гигантские файлы для монтажа.", uk: "Gen5 SSD дає надлишкові швидкості для тих, хто постійно переміщує гігантські файли.", pl: "Gen5 SSD zapewnia nadmierne prędkości dla tych, którzy stale przenoszą ogromne pliki do edycji wideo." },
-      motherboard: { en: "Z890 chipset unlocks all overclocking features for the K-series processor and supports PCIe 5.0 drives.", ru: "Чипсет Z890 разблокирует все возможности разгона для процессора с индексом K и поддерживает PCIe 5.0.", uk: "Чипсет Z890 розблоковує всі можливості розгону для процесора з індексом K.", pl: "Chipset Z890 odblokowuje wszystkie funkcje podkręcania dla procesora serii K i obsługuje dyski PCIe 5.0." },
-      psu: { en: "850W provides plenty of stable current for the demanding Intel CPU and NVIDIA GPU.", ru: "850W обеспечит мощный и стабильный ток для требовательного процессора Intel и видеокарты NVIDIA.", uk: "850W забезпечить потужний та стабільний струм для вимогливого процесора Intel та відеокарти NVIDIA.", pl: "850W zapewnia stabilny prąd dla wymagającego procesora Intela i karty graficznej NVIDIA." },
-      case: { en: "H7 Flow offers a sleek minimalist aesthetic while maintaining great temperatures via mesh panels.", ru: "H7 Flow предлагает стильную минималистичную эстетику, сохраняя отличные температуры благодаря сетке.", uk: "H7 Flow пропонує стильну мінімалістичну естетику, зберігаючи відмінні температури завдяки сітці.", pl: "H7 Flow oferuje elegancką minimalistyczną estetykę, utrzymując świetne temperatury przez panele siatkowe." },
-      cooler: { en: "Top-tier air cooler that competes with AIOs to cool the hot Intel Core Ultra 7 quietly.", ru: "Топовый воздушный кулер, который тихо охлаждает горячий Intel Core Ultra 7 на уровне водянок.", uk: "Топовий повітряний кулер, який тихо охолоджує гарячий Intel Core Ultra 7 на рівні водянок.", pl: "Najlepsze chłodzenie powietrzne, które cicho chłodzi gorącego Intela Core Ultra 7 na równi z AIO." },
     },
     components: {
       cpu: {

@@ -8,7 +8,7 @@ import messages from "@/i18n/messages";
 
 const placeholderExamples: Record<string, string[]> = {
   en: [
-    "Gaming PC for 1440p, budget 5000 PLN",
+    "Gaming PC for 1440p, budget 6000 PLN",
     "Streaming and gaming rig under 7000 zł",
     "Silent workstation for 3D rendering",
     "Budget PC for competitive FPS games",
@@ -16,21 +16,21 @@ const placeholderExamples: Record<string, string[]> = {
   ],
   ru: [
     "Комп для монтажа 4K, бюджет 8000 zł",
-    "Игровой ПК для 1440p, до 5000 PLN",
+    "Игровой ПК для 1440p, до 6000 PLN",
     "Тихая рабочая станция для рендеринга",
     "Бюджетный ПК для киберспорта",
     "Стриминг + игры, бюджет 7000 zł",
   ],
   uk: [
     "Комп для монтажу 4K, бюджет 8000 zł",
-    "Ігровий ПК для 1440p, до 5000 PLN",
+    "Ігровий ПК для 1440p, до 6000 PLN",
     "Тиха робоча станція для рендерингу",
     "Бюджетний ПК для кіберспорту",
     "Стримінг + ігри, бюджет 7000 zł",
   ],
   pl: [
     "Komputer do montażu 4K, budżet 8000 zł",
-    "PC gamingowy na 1440p, do 5000 PLN",
+    "PC gamingowy na 1440p, do 6000 PLN",
     "Cicha stacja robocza do renderowania",
     "Budżetowy PC do gier kompetytywnych",
     "Streaming + gry, budżet 7000 zł",
@@ -64,6 +64,24 @@ const promptSuggestions: Record<string, string[]> = {
   ],
 };
 
+type PlaceholderAnimation = {
+  language: string;
+  text: string;
+  exampleIndex: number;
+  charIndex: number;
+  isDeleting: boolean;
+};
+
+function initialAnimation(language: string): PlaceholderAnimation {
+  return {
+    language,
+    text: "",
+    exampleIndex: 0,
+    charIndex: 0,
+    isDeleting: false,
+  };
+}
+
 export default function PromptBar() {
   const language = useConfiguratorStore((s) => s.language);
   const isLoading = useConfiguratorStore((s) => s.isLoading);
@@ -72,15 +90,17 @@ export default function PromptBar() {
 
   const [inputValue, setInputValue] = useState("");
   const [isFocused, setIsFocused] = useState(false);
-  const [animatedPlaceholder, setAnimatedPlaceholder] = useState("");
-  const [exampleIndex, setExampleIndex] = useState(0);
-  const [charIndex, setCharIndex] = useState(0);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [animation, setAnimation] = useState<PlaceholderAnimation>(() =>
+    initialAnimation(language)
+  );
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Typewriter effect
   const examples = placeholderExamples[language] ?? placeholderExamples.en;
   const currentSuggestions = promptSuggestions[language] ?? promptSuggestions.en;
+  const activeAnimation =
+    animation.language === language ? animation : initialAnimation(language);
+  const animatedPlaceholder = activeAnimation.text;
 
   const handleSuggestionClick = (suggestion: string) => {
     setInputValue(suggestion);
@@ -89,51 +109,60 @@ export default function PromptBar() {
   };
 
   useEffect(() => {
-    // Reset animation when language changes
-    setExampleIndex(0);
-    setCharIndex(0);
-    setIsDeleting(false);
-    setAnimatedPlaceholder("");
-  }, [language]);
-
-  useEffect(() => {
     if (inputValue) return; // Don't animate if user is typing
 
-    const currentExample = examples[exampleIndex % examples.length];
+    const currentExample = examples[activeAnimation.exampleIndex % examples.length];
+    const atEnd =
+      !activeAnimation.isDeleting &&
+      activeAnimation.charIndex >= currentExample.length;
+    const delay = atEnd ? 2000 : activeAnimation.isDeleting ? 25 : 50;
 
-    const timeout = setTimeout(
-      () => {
-        if (!isDeleting) {
-          if (charIndex < currentExample.length) {
-            setAnimatedPlaceholder(currentExample.slice(0, charIndex + 1));
-            setCharIndex((c) => c + 1);
-          } else {
-            // Pause at end, then start deleting
-            setTimeout(() => setIsDeleting(true), 2000);
-          }
-        } else {
-          if (charIndex > 0) {
-            setAnimatedPlaceholder(currentExample.slice(0, charIndex - 1));
-            setCharIndex((c) => c - 1);
-          } else {
-            setIsDeleting(false);
-            setExampleIndex((i) => (i + 1) % examples.length);
-          }
+    const timeout = setTimeout(() => {
+      setAnimation((previous) => {
+        const current =
+          previous.language === language ? previous : initialAnimation(language);
+        const example = examples[current.exampleIndex % examples.length];
+
+        if (!current.isDeleting && current.charIndex < example.length) {
+          const nextCharIndex = current.charIndex + 1;
+          return {
+            ...current,
+            charIndex: nextCharIndex,
+            text: example.slice(0, nextCharIndex),
+          };
         }
-      },
-      isDeleting ? 25 : 50
-    );
+
+        if (!current.isDeleting) {
+          return { ...current, isDeleting: true };
+        }
+
+        if (current.charIndex > 0) {
+          const nextCharIndex = current.charIndex - 1;
+          return {
+            ...current,
+            charIndex: nextCharIndex,
+            text: example.slice(0, nextCharIndex),
+          };
+        }
+
+        return {
+          ...current,
+          isDeleting: false,
+          exampleIndex: (current.exampleIndex + 1) % examples.length,
+        };
+      });
+    }, delay);
 
     return () => clearTimeout(timeout);
-  }, [charIndex, isDeleting, exampleIndex, examples, inputValue]);
+  }, [activeAnimation, examples, inputValue, language]);
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
       if (isLoading) return;
-      triggerGenerate();
+      void triggerGenerate(inputValue || animatedPlaceholder);
     },
-    [isLoading, triggerGenerate]
+    [animatedPlaceholder, inputValue, isLoading, triggerGenerate]
   );
 
   return (

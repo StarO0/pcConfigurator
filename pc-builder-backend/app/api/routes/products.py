@@ -9,13 +9,17 @@ from sqlalchemy import exists, func, or_, select
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentUser, DbSession
-from app.models.entities import FavoriteProduct, Offer, PriceHistory, Product
+from app.models.entities import FavoriteProduct, Offer, PriceHistory, Product, Store
 from app.schemas.products import (
     FavoriteResponse,
     PriceHistoryResponse,
     PricePointOut,
+    ProductCompareRequest,
+    ProductCompareResponse,
     ProductListResponse,
     ProductOut,
+    ProductPriceHistoryResponse,
+    ProductPricePointOut,
 )
 from app.services.serializers import product_to_schema
 
@@ -158,6 +162,55 @@ async def favorite_products(
     )
 
 
+@router.post("/compare", response_model=ProductCompareResponse)
+async def compare_products(
+    payload: ProductCompareRequest, session: DbSession
+) -> ProductCompareResponse:
+    result = await session.execute(
+        select(Product)
+        .options(*PRODUCT_LOAD)
+        .where(
+            Product.id.in_(payload.product_ids),
+            Product.is_active.is_(True),
+            Product.status == "active",
+        )
+    )
+    by_id = {product.id: product for product in result.scalars().unique()}
+    missing = [product_id for product_id in payload.product_ids if product_id not in by_id]
+    if missing:
+        raise HTTPException(
+            status_code=404,
+            detail={"message": "Один или несколько товаров не найдены", "missing": missing},
+        )
+
+    products = [by_id[product_id] for product_id in payload.product_ids]
+    ignored_keys = {"catalog_source", "normalization_version"}
+    spec_keys = sorted(
+        {key for product in products for key in (product.specs or {}) if key not in ignored_keys}
+    )
+    categories = {product.category for product in products}
+
+    best_prices: dict[UUID, Decimal] = {}
+    for product in products:
+        prices = [
+            offer.price + offer.shipping_price
+            for offer in product.offers
+            if offer.is_active and offer.in_stock and offer.currency == "PLN"
+        ]
+        if prices:
+            best_prices[product.id] = min(prices)
+
+    lowest_price_id = min(best_prices, key=best_prices.get) if best_prices else None
+    highest_performance_id = max(products, key=lambda item: item.performance_score).id
+    return ProductCompareResponse(
+        products=[product_to_schema(product) for product in products],
+        common_category=next(iter(categories)) if len(categories) == 1 else None,
+        spec_keys=spec_keys,
+        lowest_effective_price_product_id=lowest_price_id,
+        highest_performance_product_id=highest_performance_id,
+    )
+
+
 @router.get("/{product_id}", response_model=ProductOut)
 async def get_product(product_id: UUID, session: DbSession) -> ProductOut:
     result = await session.execute(
@@ -169,6 +222,41 @@ async def get_product(product_id: UUID, session: DbSession) -> ProductOut:
     if product is None:
         raise HTTPException(status_code=404, detail="Товар не найден")
     return product_to_schema(product)
+
+
+@router.get("/{product_id}/price-history", response_model=ProductPriceHistoryResponse)
+async def product_price_history(
+    product_id: UUID,
+    session: DbSession,
+    days: int = Query(default=90, ge=1, le=730),
+) -> ProductPriceHistoryResponse:
+    if await session.get(Product, product_id) is None:
+        raise HTTPException(status_code=404, detail="Товар не найден")
+    result = await session.execute(
+        select(PriceHistory, Offer, Store)
+        .join(Offer, Offer.id == PriceHistory.offer_id)
+        .join(Store, Store.id == Offer.store_id)
+        .where(
+            Offer.product_id == product_id,
+            PriceHistory.recorded_at >= datetime.now(UTC) - timedelta(days=days),
+        )
+        .order_by(PriceHistory.recorded_at)
+    )
+    return ProductPriceHistoryResponse(
+        product_id=product_id,
+        points=[
+            ProductPricePointOut(
+                offer_id=offer.id,
+                store_name=store.name,
+                currency=offer.currency,
+                price=history.price,
+                shipping_price=history.shipping_price,
+                in_stock=history.in_stock,
+                recorded_at=history.recorded_at,
+            )
+            for history, offer, store in result
+        ],
+    )
 
 
 @router.post("/{product_id}/favorite", response_model=FavoriteResponse)

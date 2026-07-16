@@ -1,0 +1,136 @@
+name: pc-configurator
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pcbuilder}
+      POSTGRES_USER: ${POSTGRES_USER:-pcbuilder}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pcbuilder-local-change-in-production}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pcbuilder} -d ${POSTGRES_DB:-pcbuilder}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
+  api:
+    build:
+      context: ./pc-builder-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-pcbuilder}:${POSTGRES_PASSWORD:-pcbuilder-local-change-in-production}@db:5432/${POSTGRES_DB:-pcbuilder}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      FRONTEND_URL: http://localhost:3000
+      TRUSTED_HOSTS: localhost,127.0.0.1,testserver,api,frontend
+      RUN_MIGRATIONS: "true"
+      RUN_SEED: "false"
+      AUTO_CREATE_TABLES: "false"
+      STARTER_SNAPSHOT_ENABLED: "true"
+      STARTER_SNAPSHOT_PATH: data/starter-snapshot-pl-2026-07-15.json
+      PRUNE_INCOMPLETE_CATALOG: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/live', timeout=5)"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ./front
+      args:
+        NEXT_PUBLIC_API_URL: /api-backend
+        BACKEND_INTERNAL_URL: http://api:8000/api/v1
+        NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      BACKEND_INTERNAL_URL: http://api:8000/api/v1
+      NEXT_PUBLIC_API_URL: /api-backend
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      NEXT_TELEMETRY_DISABLED: "1"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 15s
+
+  worker:
+    build:
+      context: ./pc-builder-backend
+    restart: unless-stopped
+    command: ["celery", "-A", "app.workers.celery_app:celery_app", "worker", "--loglevel=INFO", "--queues=parsers,maintenance,notifications"]
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-pcbuilder}:${POSTGRES_PASSWORD:-pcbuilder-local-change-in-production}@db:5432/${POSTGRES_DB:-pcbuilder}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      RUN_MIGRATIONS: "false"
+      RUN_SEED: "false"
+      AUTO_CREATE_TABLES: "false"
+    depends_on:
+      api:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  beat:
+    build:
+      context: ./pc-builder-backend
+    restart: unless-stopped
+    command: ["celery", "-A", "app.workers.celery_app:celery_app", "beat", "--loglevel=INFO"]
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-pcbuilder}:${POSTGRES_PASSWORD:-pcbuilder-local-change-in-production}@db:5432/${POSTGRES_DB:-pcbuilder}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      RUN_MIGRATIONS: "false"
+      RUN_SEED: "false"
+      AUTO_CREATE_TABLES: "false"
+    depends_on:
+      api:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,6 +1,6 @@
 # Подключение магазина
 
-В production предпочтителен официальный API, affiliate/XML/CSV/JSON-фид. HTML scraping стоит использовать только после проверки правил конкретного магазина.
+В production предпочтителен официальный API, affiliate/XML/CSV/JSON-фид. Без API используйте Browser Collector, сохранённый HTML, JSON-LD/sitemap либо разрешённый XML/YML-фид. Серверный обход включайте только после проверки правил конкретного магазина.
 
 ## 1. Создать магазин
 
@@ -46,14 +46,23 @@
 
 Порядок:
 
-1. `product_sku`;
-2. EAN;
-3. MPN;
-4. fuzzy matching нормализованного названия.
+1. SKU/EAN/MPN;
+2. точное название в той же категории;
+3. fuzzy matching в той же категории и, если известен, бренде.
 
-В PostgreSQL fuzzy shortlist использует `pg_trgm`, после чего применяется `token_set_ratio`. Низкая уверенность не создаёт связь автоматически: предложение попадает в `unmatched`.
+В PostgreSQL fuzzy shortlist использует `pg_trgm`, затем комбинируются `token_set_ratio` и `token_sort_ratio`. Автопубликация требует confidence не ниже 92%; более слабая запись остаётся в staging. При ручном подтверждении слабое совпадение создаёт отдельную модель, а не склеивается с похожим названием.
 
-## 4. Ручной push
+## 4. Keyless staging API
+
+- `POST /api/v1/admin/harvester/browser-import` — JSON от расширения/локального инструмента;
+- `POST /api/v1/admin/harvester/extract-preview` — проверить извлечение из HTML;
+- `POST /api/v1/admin/harvester/html-import` — опубликовать или отправить HTML в staging;
+- `POST /api/v1/admin/harvester/queue` — добавить разрешённые URL;
+- `POST /api/v1/admin/harvester/queue/process/{store_id}` — обработать очередь;
+- `GET /api/v1/admin/harvester/records` — review;
+- `POST /api/v1/admin/harvester/records/{id}/approve` — принять запись.
+
+## 5. Ручной push
 
 Можно не давать backend доступ к магазину, а отправлять готовые данные через:
 
@@ -61,7 +70,7 @@
 
 с `X-Service-Token`, имеющим scope `offers:write`.
 
-## 5. Собственный adapter
+## 6. Собственный adapter
 
 Наследуйте `StoreParser` в `app/services/parsers/base.py`, верните список `OfferImportItem` и зарегистрируйте класс в `PARSERS` внутри `generic.py` либо вынесите registry в отдельный модуль.
 

@@ -10,7 +10,14 @@ import httpx
 
 from app.models.entities import Store
 from app.schemas.products import OfferImportItem
+from app.services.harvester.extraction import extract_product, parse_xml_feed
 from app.services.parsers.base import StoreParser
+from app.services.parsers.catalog_enrichment import (
+    CatalogAcquisitionParser,
+    CatalogEnrichmentParser,
+)
+from app.services.parsers.ceneo import CeneoPartnerParser
+from app.services.parsers.jsonld_sitemap import JsonLdSitemapParser
 
 
 def resolve_env(value: Any) -> Any:
@@ -122,10 +129,55 @@ class GenericCSVFeedParser(StoreParser):
         return items
 
 
+class GenericXMLFeedParser(StoreParser):
+    async def fetch(self, store: Store) -> list[OfferImportItem]:
+        cfg = resolve_env(store.parser_config)
+        async with httpx.AsyncClient(
+            timeout=cfg.get("timeout", 30), follow_redirects=True
+        ) as client:
+            response = await client.get(cfg["url"], headers=cfg.get("headers", {}))
+            response.raise_for_status()
+        harvested = parse_xml_feed(response.content, store.slug, cfg.get("fields"))
+        return [
+            OfferImportItem.model_validate(item.model_dump())
+            for item in harvested
+            if item.price is not None
+        ]
+
+
+class HtmlSelectorParser(StoreParser):
+    async def fetch(self, store: Store) -> list[OfferImportItem]:
+        cfg = resolve_env(store.parser_config)
+        urls = cfg.get("urls") or [cfg.get("url")]
+        urls = [str(url) for url in urls if url]
+        items: list[OfferImportItem] = []
+        async with httpx.AsyncClient(
+            timeout=cfg.get("timeout", 30),
+            follow_redirects=True,
+            headers=cfg.get("headers", {}),
+        ) as client:
+            for url in urls:
+                response = await client.get(url)
+                response.raise_for_status()
+                harvested = extract_product(
+                    response.text, str(response.url), store.slug, cfg.get("selectors", {})
+                )
+                if harvested and harvested.price is not None:
+                    items.append(OfferImportItem.model_validate(harvested.model_dump()))
+        return items
+
+
 PARSERS: dict[str, type[StoreParser]] = {
     "json": GenericJSONFeedParser,
     "api": GenericJSONFeedParser,
     "csv": GenericCSVFeedParser,
+    "xml": GenericXMLFeedParser,
+    "yml": GenericXMLFeedParser,
+    "html_selector": HtmlSelectorParser,
+    "jsonld_sitemap": JsonLdSitemapParser,
+    "catalog_enrichment": CatalogEnrichmentParser,
+    "catalog_acquisition": CatalogAcquisitionParser,
+    "ceneo": CeneoPartnerParser,
 }
 
 

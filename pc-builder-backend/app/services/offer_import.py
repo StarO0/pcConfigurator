@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 from app.models.entities import Offer, PriceHistory, Product, Store
 from app.schemas.products import OfferImportItem, UnmatchedOffer
 from app.services.matching import normalize_text, product_matcher
+from app.services.spec_normalization import normalize_specs
 
 
 @dataclass(slots=True)
@@ -49,21 +50,29 @@ async def import_offers(
             ean=item.ean,
             mpn=item.mpn,
             title=item.title,
+            brand=item.brand,
+            category=item.category,
         )
         product = match.product
         if product is None and create_unmatched_products:
             sku = item.product_sku or f"AUTO-{store.slug}-{item.external_id}"[:120]
             product = Product(
-                category="unknown",
-                brand="Unknown",
+                category=(item.category or "unknown").lower(),
+                brand=item.brand or "Unknown",
                 name=item.title,
                 normalized_name=normalize_text(item.title),
                 sku=sku,
                 ean=item.ean,
                 mpn=item.mpn,
-                specs={},
-                status="draft",
-                is_active=False,
+                image_url=str(item.image_url) if item.image_url else None,
+                specs=normalize_specs(
+                    (item.category or "unknown").lower(),
+                    item.title,
+                    item.brand or "Unknown",
+                    item.specs,
+                ),
+                status="active" if item.category else "draft",
+                is_active=bool(item.category),
             )
             session.add(product)
             await session.flush()
@@ -96,6 +105,7 @@ async def import_offers(
                 in_stock=item.in_stock,
                 stock_quantity=item.stock_quantity,
                 condition=item.condition,
+                source_metadata=item.source_metadata,
                 fetched_at=now,
                 last_seen_at=now,
             )
@@ -125,6 +135,7 @@ async def import_offers(
             offer.in_stock = item.in_stock
             offer.stock_quantity = item.stock_quantity
             offer.condition = item.condition
+            offer.source_metadata = item.source_metadata
             offer.fetched_at = now
             offer.last_seen_at = now
             offer.is_active = True

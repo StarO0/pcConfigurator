@@ -1,17 +1,13 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin", "cyrillic"],
-});
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://intellect-builds.lovable.app"),
+  metadataBase: new URL(siteUrl),
   title: "AI PC Configurator | Сборка ПК с помощью ИИ",
   description:
-    "AI-powered PC configurator. Describe your ideal computer and get 5 optimized builds with real prices from Polish stores. Поддержка 4 языков: EN, RU, UK, PL.",
+    "AI-powered PC configurator with a real catalog, compatibility checks and prices from Polish stores.",
   keywords: [
     "PC configurator",
     "AI PC builder",
@@ -21,8 +17,8 @@ export const metadata: Metadata = {
   ],
   openGraph: {
     title: "AI PC Configurator",
-    description: "Generate optimized PC builds using AI in seconds.",
-    url: "https://intellect-builds.lovable.app",
+    description: "Build, validate and compare PC configurations with real catalogue data.",
+    url: siteUrl,
     siteName: "AI PC Configurator",
     locale: "en_US",
     type: "website",
@@ -40,19 +36,18 @@ export const metadata: Metadata = {
   },
 };
 
-import AuthProvider from "@/components/AuthProvider";
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
-      <body className="min-h-full flex flex-col bg-[var(--bg-primary)] text-white font-[var(--font-inter)]" suppressHydrationWarning>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
+      <body
+        className="min-h-full flex flex-col bg-[var(--bg-primary)] text-white font-sans"
+        suppressHydrationWarning
+      >
+        {children}
       </body>
     </html>
   );

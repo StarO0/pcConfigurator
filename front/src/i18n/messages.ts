@@ -5,7 +5,7 @@ const messages = {
       subtitle: "Build your dream PC with AI",
     },
     prompt: {
-      placeholder: "Describe your ideal PC... (e.g., \"Gaming PC for 1440p, budget 5000 PLN\")",
+      placeholder: "Describe your ideal PC... (e.g., \"Gaming PC for 1440p, budget 6000 PLN\")",
       button: "Generate Builds",
       loading: "AI is generating configurations...",
     },

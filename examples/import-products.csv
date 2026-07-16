@@ -1,0 +1,3 @@
+name;brand;category;sku;ean;mpn;image_url;performance_score;spec_socket;spec_power_w;spec_ram_type
+AMD Ryzen 7 9700X;AMD;cpu;MY-CPU-9700X;0730143315289;100-100001404WOF;https://example.com/9700x.jpg;85;AM5;65;
+MSI B650 Example;MSI;motherboard;MY-MB-B650;;B650-EXAMPLE;https://example.com/b650.jpg;60;AM5;;DDR5

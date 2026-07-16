@@ -29,3 +29,33 @@ def test_favorites_and_price_history(client, auth_headers):
     history = client.get(f"/api/v1/products/offers/{offer_id}/history")
     assert history.status_code == 200
     assert history.json()["points"]
+
+
+def test_product_compare(client):
+    products = client.get(
+        "/api/v1/products", params={"category": "cpu", "limit": 2, "in_stock": True}
+    )
+    assert products.status_code == 200, products.text
+    items = products.json()["items"]
+    assert len(items) == 2
+    response = client.post(
+        "/api/v1/products/compare",
+        json={"product_ids": [items[0]["id"], items[1]["id"]]},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["common_category"] == "cpu"
+    assert len(body["products"]) == 2
+    assert body["highest_performance_product_id"] in {items[0]["id"], items[1]["id"]}
+    assert isinstance(body["spec_keys"], list)
+
+
+def test_product_compare_rejects_duplicate_ids(client):
+    product = client.get("/api/v1/products", params={"limit": 1, "in_stock": True}).json()["items"][
+        0
+    ]
+    response = client.post(
+        "/api/v1/products/compare",
+        json={"product_ids": [product["id"], product["id"]]},
+    )
+    assert response.status_code == 422

@@ -215,9 +215,9 @@ export default function AuthModal() {
                           type={showPassword ? "text" : "password"}
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
-                          placeholder="Минимум 6 символов"
+                              placeholder="Минимум 10 символов"
                           required
-                          minLength={6}
+                              minLength={10}
                           className="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] pl-10 pr-12 py-3 text-sm text-white placeholder-zinc-600 outline-none focus:border-[#06b6d4]/50 focus:ring-1 focus:ring-[#06b6d4]/30 transition-all"
                         />
                         <button

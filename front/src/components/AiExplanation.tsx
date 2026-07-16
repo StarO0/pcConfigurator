@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Brain } from "lucide-react";
-import { useConfiguratorStore } from "@/store/configurator-store";
 import messages from "@/i18n/messages";
 
 /* ── Props ────────────────────────────────────────────────────── */
@@ -11,6 +10,50 @@ type AiExplanationProps = {
   explanation: Record<string, string>;
   language: string;
 };
+
+function TypingText({ text }: { text: string }) {
+  const [displayed, setDisplayed] = useState("");
+  const [done, setDone] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!text) return;
+
+    let index = 0;
+    intervalRef.current = setInterval(() => {
+      index += 1;
+      if (index >= text.length) {
+        setDisplayed(text);
+        setDone(true);
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        return;
+      }
+      setDisplayed(text.slice(0, index));
+    }, 18);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [text]);
+
+  return (
+    <p className="text-sm leading-relaxed text-white/60">
+      {displayed}
+      {!done && text && (
+        <motion.span
+          animate={{ opacity: [1, 0] }}
+          transition={{
+            duration: 0.6,
+            repeat: Infinity,
+            repeatType: "reverse",
+          }}
+          className="ml-0.5 inline-block h-4 w-[2px] translate-y-[2px]
+                     rounded-full bg-indigo-400"
+        />
+      )}
+    </p>
+  );
+}
 
 /* ── Component ────────────────────────────────────────────────── */
 export default function AiExplanation({
@@ -20,33 +63,6 @@ export default function AiExplanation({
   const t = messages[language as keyof typeof messages] ?? messages.en;
 
   const fullText = explanation[language] ?? explanation.en ?? "";
-  const [displayed, setDisplayed] = useState("");
-  const [done, setDone] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  /* Reset + start typing whenever text or language changes */
-  useEffect(() => {
-    setDisplayed("");
-    setDone(false);
-
-    if (!fullText) return;
-
-    let index = 0;
-    intervalRef.current = setInterval(() => {
-      index += 1;
-      if (index >= fullText.length) {
-        setDisplayed(fullText);
-        setDone(true);
-        if (intervalRef.current) clearInterval(intervalRef.current);
-        return;
-      }
-      setDisplayed(fullText.slice(0, index));
-    }, 18);
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [fullText, language]);
 
   return (
     <AnimatePresence mode="wait">
@@ -83,21 +99,7 @@ export default function AiExplanation({
           </div>
 
           {/* ── Typing body ────────────────────────────────────── */}
-          <p className="text-sm leading-relaxed text-white/60">
-            {displayed}
-            {!done && (
-              <motion.span
-                animate={{ opacity: [1, 0] }}
-                transition={{
-                  duration: 0.6,
-                  repeat: Infinity,
-                  repeatType: "reverse",
-                }}
-                className="ml-0.5 inline-block h-4 w-[2px] translate-y-[2px]
-                           rounded-full bg-indigo-400"
-              />
-            )}
-          </p>
+          <TypingText key={`${language}:${fullText}`} text={fullText} />
         </div>
       </motion.div>
     </AnimatePresence>

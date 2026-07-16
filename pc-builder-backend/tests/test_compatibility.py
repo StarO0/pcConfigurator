@@ -54,3 +54,19 @@ def test_detects_multiple_hardware_conflicts():
     gpu_issue = next(issue for issue in issues if issue.code == "gpu_too_long")
     assert gpu_issue.details["difference_mm"] == 100
     assert "100" in gpu_issue.message
+
+
+def test_sparse_catalog_specs_do_not_create_false_hardware_conflicts():
+    issues = compatibility_engine.validate(
+        {
+            "cpu": product(socket="AM5", power_w=65),
+            "motherboard": product(),
+            "ram": product(capacity_gb=32),
+            "gpu": product(length_mm=330, power_w=250),
+            "storage": product(interface="NVMe"),
+            "cooler": product(type="air"),
+            "case": product(),
+            "psu": product(),
+        }
+    )
+    assert not any(issue.severity == "error" for issue in issues)

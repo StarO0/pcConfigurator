@@ -1,6 +1,8 @@
 import { create } from "zustand";
-import builds, { Build, Component, ComponentCategory, AllCategory } from "@/data/builds";
+import type { Build, Component, ComponentCategory, AllCategory } from "@/data/builds";
 import { Language } from "@/i18n/messages";
+import { api, ApiError } from "@/lib/api";
+import { useAuthStore } from "@/store/auth-store";
 
 // Simple bottleneck scores (higher = more powerful)
 const cpuScores: Record<string, number> = {
@@ -40,25 +42,42 @@ type ConfiguratorState = {
   currentBuildIndex: number;
   showResults: boolean;
   isLoading: boolean;
+  generationError: string | null;
+  lastPrompt: string;
   bottleneckWarning: BottleneckWarning;
   replaceModalOpen: boolean;
   replaceCategory: AllCategory | null;
+  replacementOptions: Component[];
+  replacementLoading: boolean;
+  replacementError: string | null;
   setLanguage: (lang: Language) => void;
   setAppMode: (mode: "configurator" | "ai") => void;
   setCurrentBuild: (index: number) => void;
   nextBuild: () => void;
   prevBuild: () => void;
-  replaceComponent: (buildIndex: number, category: AllCategory, component: Component) => void;
+  replaceComponent: (buildIndex: number, category: AllCategory, component: Component) => Promise<void>;
   openReplaceModal: (category: AllCategory) => void;
   closeReplaceModal: () => void;
   dismissBottleneck: () => void;
-  triggerGenerate: () => void;
+  triggerGenerate: (prompt?: string) => Promise<void>;
   loadSavedBuild: (build: Build) => void;
 };
 
 function calculateBottleneck(build: Build): BottleneckWarning {
-  const cpuScore = cpuScores[build.components.cpu.id] ?? 70;
-  const gpuScore = gpuScores[build.components.gpu.id] ?? 70;
+  if (build.bottleneck) {
+    if (build.bottleneck.status === "balanced") return null;
+    return {
+      type: build.bottleneck.status === "cpu_limited" ? "cpu" : "gpu",
+      percentage: Math.round(build.bottleneck.estimatedPercent),
+      recommendation: build.bottleneck.recommendedProduct ?? build.bottleneck.message,
+    };
+  }
+
+  const cpu = build.components.cpu;
+  const gpu = build.components.gpu;
+  if (!cpu || !gpu) return null;
+  const cpuScore = cpuScores[cpu.id] ?? 70;
+  const gpuScore = gpuScores[gpu.id] ?? 70;
 
   const diff = Math.abs(cpuScore - gpuScore);
 
@@ -86,43 +105,64 @@ function calculateBottleneck(build: Build): BottleneckWarning {
 export const useConfiguratorStore = create<ConfiguratorState>((set, get) => ({
   language: "en",
   appMode: "configurator" as const,
-  builds: builds.map((b) => ({ ...b })),
+  builds: [],
   currentBuildIndex: 0,
   showResults: false,
   isLoading: false,
+  generationError: null,
+  lastPrompt: "",
   bottleneckWarning: null,
   replaceModalOpen: false,
   replaceCategory: null,
+  replacementOptions: [],
+  replacementLoading: false,
+  replacementError: null,
 
   setLanguage: (lang) => set({ language: lang }),
   setAppMode: (mode) => set({ appMode: mode }),
 
-  setCurrentBuild: (index) => set({ currentBuildIndex: index, bottleneckWarning: null }),
+  setCurrentBuild: (index) => {
+    const build = get().builds[index];
+    if (build) set({ currentBuildIndex: index, bottleneckWarning: calculateBottleneck(build) });
+  },
 
   nextBuild: () => {
     const { currentBuildIndex, builds } = get();
-    set({
-      currentBuildIndex: (currentBuildIndex + 1) % builds.length,
-      bottleneckWarning: null,
-    });
+    if (!builds.length) return;
+    const index = (currentBuildIndex + 1) % builds.length;
+    set({ currentBuildIndex: index, bottleneckWarning: calculateBottleneck(builds[index]) });
   },
 
   prevBuild: () => {
     const { currentBuildIndex, builds } = get();
-    set({
-      currentBuildIndex: (currentBuildIndex - 1 + builds.length) % builds.length,
-      bottleneckWarning: null,
-    });
+    if (!builds.length) return;
+    const index = (currentBuildIndex - 1 + builds.length) % builds.length;
+    set({ currentBuildIndex: index, bottleneckWarning: calculateBottleneck(builds[index]) });
   },
 
-  replaceComponent: (buildIndex, category, component) => {
+  replaceComponent: async (buildIndex, category, component) => {
     const state = get();
     const newBuilds = [...state.builds];
-    const build = { ...newBuilds[buildIndex] };
-    build.components = { ...build.components, [category]: component };
-
-    // Recalculate total price
-    build.totalPrice = Object.values(build.components).reduce((sum, c) => sum + c.price, 0);
+    let build = { ...newBuilds[buildIndex] };
+    if (build.backendId && !["monitor", "keyboard", "mouse", "ups"].includes(category)) {
+      try {
+        const token = await useAuthStore.getState().ensureAccessToken();
+        build = await api.replaceComponent(
+          build,
+          category as ComponentCategory,
+          component,
+          token,
+        );
+      } catch (error) {
+        set({
+          replacementError: error instanceof Error ? error.message : "Не удалось заменить компонент",
+        });
+        return;
+      }
+    } else {
+      build.components = { ...build.components, [category]: component };
+      build.totalPrice = Object.values(build.components).reduce((sum, item) => sum + item.price, 0);
+    }
 
     newBuilds[buildIndex] = build;
 
@@ -133,22 +173,70 @@ export const useConfiguratorStore = create<ConfiguratorState>((set, get) => ({
       bottleneckWarning: warning,
       replaceModalOpen: false,
       replaceCategory: null,
+      replacementOptions: [],
+      replacementError: null,
     });
   },
 
-  openReplaceModal: (category) =>
-    set({ replaceModalOpen: true, replaceCategory: category }),
+  openReplaceModal: (category) => {
+    const build = get().builds[get().currentBuildIndex];
+    set({
+      replaceModalOpen: true,
+      replaceCategory: category,
+      replacementOptions: [],
+      replacementError: null,
+    });
+    if (!build.backendId || ["monitor", "keyboard", "mouse", "ups"].includes(category)) return;
+    set({ replacementLoading: true });
+    void (async () => {
+      try {
+        const token = await useAuthStore.getState().ensureAccessToken();
+        const options = await api.replacementOptions(
+          build,
+          category as ComponentCategory,
+          token,
+        );
+        set({ replacementOptions: options, replacementLoading: false });
+      } catch (error) {
+        set({
+          replacementLoading: false,
+          replacementError: error instanceof Error ? error.message : "Не удалось загрузить варианты",
+        });
+      }
+    })();
+  },
 
   closeReplaceModal: () =>
-    set({ replaceModalOpen: false, replaceCategory: null }),
+    set({
+      replaceModalOpen: false,
+      replaceCategory: null,
+      replacementOptions: [],
+      replacementError: null,
+    }),
 
   dismissBottleneck: () => set({ bottleneckWarning: null }),
 
-  triggerGenerate: () => {
-    set({ isLoading: true });
-    setTimeout(() => {
-      set({ isLoading: false, showResults: true });
-    }, 1500);
+  triggerGenerate: async (prompt) => {
+    const cleanPrompt = (prompt ?? get().lastPrompt).trim() || "Игровой компьютер до 6000 PLN";
+    set({ isLoading: true, generationError: null, lastPrompt: cleanPrompt });
+    try {
+      const token = await useAuthStore.getState().ensureAccessToken();
+      const generated = await api.generate(cleanPrompt, get().language, token);
+      if (!generated.length) throw new ApiError(502, "Backend не вернул ни одной сборки");
+      set({
+        builds: generated,
+        currentBuildIndex: 0,
+        isLoading: false,
+        showResults: true,
+        bottleneckWarning: generated.length ? calculateBottleneck(generated[0]) : null,
+      });
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : "Backend недоступен. Запустите проект через start-local-windows.bat.";
+      set({ isLoading: false, generationError: message });
+    }
   },
 
   loadSavedBuild: (build) => {
@@ -158,7 +246,7 @@ export const useConfiguratorStore = create<ConfiguratorState>((set, get) => ({
         builds: newBuilds,
         currentBuildIndex: newBuilds.length - 1,
         showResults: true,
-        bottleneckWarning: null,
+        bottleneckWarning: calculateBottleneck(build),
       };
     });
   },

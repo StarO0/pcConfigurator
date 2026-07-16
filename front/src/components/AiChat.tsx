@@ -4,10 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Loader2, Sparkles, Bot, User, RotateCcw } from "lucide-react";
 import { useChatStore } from "@/store/chat-store";
-import { useConfiguratorStore } from "@/store/configurator-store";
 
 const SUGGESTIONS = [
-  "Игровой ПК для 1440p, бюджет 5000 zł",
+  "Игровой ПК для 1440p, бюджет 6000 zł",
   "Тихая рабочая станция для рендеринга",
   "CS2 500 FPS на 1440p 240Hz",
   "Мощный ПК для монтажа 4K",
@@ -15,7 +14,6 @@ const SUGGESTIONS = [
 
 export default function AiChat() {
   const { messages, phase, sendMessage, clearChat } = useChatStore();
-  const showResults = useConfiguratorStore((s) => s.showResults);
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -61,7 +59,7 @@ export default function AiChat() {
             </span>
           </h2>
           <p className="text-zinc-500 text-sm max-w-md mx-auto">
-            ИИ задаст уточняющие вопросы и подберёт 5 оптимальных сборок под ваши задачи и бюджет
+            ИИ задаст уточняющие вопросы и подберёт до 5 сборок под ваши задачи и бюджет
           </p>
         </motion.div>
 

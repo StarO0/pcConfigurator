@@ -1,13 +1,15 @@
 import os
+import tempfile
 from pathlib import Path
 
-DB_PATH = Path("test_pc_builder.db")
-DB_PATH.unlink(missing_ok=True)
+DB_PATH = Path(tempfile.gettempdir()) / f"pc_builder_tests_{os.getpid()}.db"
+for suffix in ("", "-journal", "-wal", "-shm"):
+    Path(f"{DB_PATH}{suffix}").unlink(missing_ok=True)
 
 os.environ.update(
     {
         "ENVIRONMENT": "test",
-        "DATABASE_URL": "sqlite+aiosqlite:///./test_pc_builder.db",
+        "DATABASE_URL": f"sqlite+aiosqlite:///{DB_PATH.as_posix()}",
         "REDIS_URL": "redis://localhost:6399/15",
         "AI_PROVIDER": "rules",
         "AUTO_CREATE_TABLES": "true",
@@ -16,6 +18,7 @@ os.environ.update(
         "ADMIN_BOOTSTRAP_EMAIL": "admin@example.com",
         "ADMIN_BOOTSTRAP_PASSWORD": "Admin-password-123",
         "LOG_JSON": "false",
+        "LOGIN_ATTEMPTS_PER_15_MINUTES": "1000",
     }
 )
 
@@ -25,16 +28,12 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app.main import app  # noqa: E402
 
 
-@pytest.fixture(scope="session", autouse=True)
-def clean_test_db():
-    yield
-    DB_PATH.unlink(missing_ok=True)
-
-
 @pytest.fixture(scope="session")
 def client():
     with TestClient(app) as test_client:
         yield test_client
+    for suffix in ("", "-journal", "-wal", "-shm"):
+        Path(f"{DB_PATH}{suffix}").unlink(missing_ok=True)
 
 
 @pytest.fixture

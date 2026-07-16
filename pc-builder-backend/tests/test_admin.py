@@ -53,3 +53,46 @@ def test_admin_product_store_service_token_and_import(client, admin_headers):
         },
     )
     assert product_created.status_code == 201, product_created.text
+
+
+def test_admin_xml_preview(client, admin_headers):
+    payload = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <catalog>
+      <product sku="XML-CPU-1">
+        <category>cpu</category>
+        <brand>Example</brand>
+        <name>Example CPU</name>
+        <specs><socket>AM5</socket><cores>8</cores></specs>
+      </product>
+      <product sku="XML-GPU-1">
+        <category>gpu</category>
+        <brand>Example</brand>
+        <name>Example GPU</name>
+      </product>
+    </catalog>
+    """
+    response = client.post(
+        "/api/v1/admin/file-preview",
+        headers=admin_headers,
+        files={"file": ("catalog.xml", payload, "application/xml")},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["total"] == 2
+    assert body["rows"][0]["sku"] == "XML-CPU-1"
+    assert body["rows"][0]["specs_socket"] == "AM5"
+
+
+def test_admin_xml_preview_rejects_doctype(client, admin_headers):
+    response = client.post(
+        "/api/v1/admin/file-preview",
+        headers=admin_headers,
+        files={
+            "file": (
+                "unsafe.xml",
+                b'<!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><foo>&xxe;</foo>',
+                "application/xml",
+            )
+        },
+    )
+    assert response.status_code == 422

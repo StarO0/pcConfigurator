@@ -7,7 +7,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from fastapi import APIRouter, Header, HTTPException, Query, Request, status
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.exc import StaleDataError
@@ -26,6 +26,7 @@ from app.schemas.builds import (
     GenerateBuildRequest,
     GenerateBuildResponse,
     GeneratedBuildOut,
+    ManualBuildRequest,
     ReplaceComponentRequest,
     ReplacementOption,
     RepriceBuildRequest,
@@ -159,6 +160,110 @@ async def generate_builds(
         builds=response_builds,
         cached=requirements_from_cache,
     )
+
+
+@router.post("/manual", response_model=BuildOut, status_code=status.HTTP_201_CREATED)
+async def create_manual_build(
+    payload: ManualBuildRequest,
+    session: DbSession,
+    request: Request,
+    user: CurrentUser,
+) -> BuildOut:
+    ids = set(payload.components.values())
+    result = await session.execute(
+        select(Product)
+        .options(
+            selectinload(Product.offers).selectinload(Offer.store),
+            selectinload(Product.benchmarks),
+        )
+        .where(
+            Product.id.in_(ids),
+            Product.is_active.is_(True),
+            Product.status == "active",
+        )
+    )
+    products_by_id = {product.id: product for product in result.scalars().unique()}
+    missing = [str(product_id) for product_id in ids if product_id not in products_by_id]
+    if missing:
+        raise HTTPException(status_code=404, detail={"missing_product_ids": missing})
+
+    products: dict[str, Product] = {}
+    for category, product_id in payload.components.items():
+        product = products_by_id[product_id]
+        if product.category != category:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Товар {product.name} имеет категорию {product.category}, а не {category}",
+            )
+        products[category] = product
+
+    issues = compatibility_engine.validate(products, payload.language)
+    errors = [issue for issue in issues if issue.severity == "error"]
+    if errors:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "В ручной сборке есть несовместимые компоненты",
+                "issues": [issue.model_dump() for issue in errors],
+            },
+        )
+    basket = optimize_basket(products, payload.currency, mode=payload.basket_mode)
+    if basket is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Для части выбранных товаров нет актуального предложения с ценой",
+        )
+
+    from app.schemas.builds import BuildRequirements
+
+    budget = max(Decimal("1500"), basket.total_price)
+    requirements = BuildRequirements(
+        budget=float(budget),
+        currency=payload.currency,
+        language=payload.language,
+        purposes=["universal"],
+    )
+    build = Build(
+        owner_id=user.id,
+        name=payload.name.strip(),
+        prompt="manual-configurator",
+        profile="manual",
+        title=payload.name.strip(),
+        requirements=requirements.model_dump(mode="json"),
+        explanation=(
+            "Ручная сборка проверена локальным движком совместимости. "
+            f"Выбрано компонентов: {len(products)}; цена с доставкой: "
+            f"{basket.total_price:.2f} {payload.currency}."
+        ),
+        budget=budget,
+        currency=payload.currency,
+        total_price=basket.total_price,
+        delivery_price=basket.delivery_price,
+        store_count=basket.store_count,
+        is_saved=True,
+    )
+    session.add(build)
+    await session.flush()
+    for category, product in products.items():
+        session.add(
+            BuildComponent(
+                build_id=build.id,
+                category=category,
+                product_id=product.id,
+                selected_offer_id=basket.offers[category].id,
+            )
+        )
+    await audit(
+        session,
+        request,
+        "build.manual_create",
+        "build",
+        build.id,
+        user_id=user.id,
+        details={"components": len(products)},
+    )
+    await session.commit()
+    return build_to_schema(await load_build(session, build.id))
 
 
 @router.get("/saved/me/list", response_model=list[BuildOut])
@@ -660,19 +765,19 @@ async def restore_build(build_id: UUID, session: DbSession, user: CurrentUser) -
     return build_to_schema(await load_build(session, build.id))
 
 
-@router.get("/{build_id}/export", response_class=ORJSONResponse)
+@router.get("/{build_id}/export", response_class=JSONResponse)
 async def export_build(
     build_id: UUID,
     session: DbSession,
     user: OptionalUser,
     build_token: str | None = Header(default=None, alias="X-Build-Token"),
-) -> ORJSONResponse:
+) -> JSONResponse:
     build = await load_build(session, build_id)
     ensure_not_expired(build)
     if not can_read(build, user, build_token):
         raise HTTPException(status_code=403, detail="Нет доступа к сборке")
     payload = build_to_schema(build).model_dump(mode="json")
-    return ORJSONResponse(
+    return JSONResponse(
         content=payload,
         headers={
             "Content-Disposition": f'attachment; filename="pc-build-{build.id}.json"',

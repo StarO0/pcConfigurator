@@ -114,11 +114,16 @@ class Store(Base):
     )
 
     offers: Mapped[list[Offer]] = relationship(back_populates="store")
+    harvest_records: Mapped[list[HarvestRecord]] = relationship(back_populates="store")
+    crawl_queue: Mapped[list[CrawlQueueItem]] = relationship(back_populates="store")
 
 
 class Product(Base):
     __tablename__ = "products"
-    __table_args__ = (Index("ix_products_category_brand", "category", "brand"),)
+    __table_args__ = (
+        Index("ix_products_category_brand", "category", "brand"),
+        Index("ix_products_canonical_source_id", "canonical_source", "canonical_id"),
+    )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     category: Mapped[str] = mapped_column(String(40), index=True)
@@ -129,6 +134,10 @@ class Product(Base):
     ean: Mapped[str | None] = mapped_column(String(32), unique=True, nullable=True)
     mpn: Mapped[str | None] = mapped_column(String(120), index=True, nullable=True)
     image_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    gallery_urls: Mapped[list[str]] = mapped_column(JSON, default=list)
+    canonical_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    canonical_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    source_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     release_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     performance_score: Mapped[float] = mapped_column(default=0.0)
     noise_score: Mapped[float] = mapped_column(default=50.0)
@@ -152,6 +161,7 @@ class Product(Base):
     benchmarks: Mapped[list[ProductBenchmark]] = relationship(
         back_populates="product", cascade="all, delete-orphan"
     )
+    harvest_records: Mapped[list[HarvestRecord]] = relationship(back_populates="product")
 
 
 class Offer(Base):
@@ -175,6 +185,7 @@ class Offer(Base):
     in_stock: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     stock_quantity: Mapped[int | None] = mapped_column(Integer, nullable=True)
     condition: Mapped[str] = mapped_column(String(20), default="new")
+    source_metadata: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     fetched_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, index=True
     )
@@ -373,6 +384,66 @@ class ParserRun(Base):
     error_count: Mapped[int] = mapped_column(Integer, default=0)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     metadata_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
+
+class HarvestRecord(Base):
+    """Immutable-source staging row with a mutable review decision."""
+
+    __tablename__ = "harvest_records"
+    __table_args__ = (
+        UniqueConstraint("store_id", "fingerprint", name="uq_harvest_store_fingerprint"),
+        Index("ix_harvest_status_discovered", "status", "discovered_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    store_id: Mapped[UUID] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("products.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    source_url: Mapped[str] = mapped_column(String(1500))
+    external_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    fingerprint: Mapped[str] = mapped_column(String(64))
+    raw_payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    normalized_payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(30), default="pending", index=True)
+    match_confidence: Mapped[float] = mapped_column(default=0.0)
+    match_method: Mapped[str] = mapped_column(String(40), default="unmatched")
+    quality_score: Mapped[float] = mapped_column(default=0.0)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    discovered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    store: Mapped[Store] = relationship(back_populates="harvest_records")
+    product: Mapped[Product | None] = relationship(back_populates="harvest_records")
+
+
+class CrawlQueueItem(Base):
+    __tablename__ = "crawl_queue"
+    __table_args__ = (
+        UniqueConstraint("store_id", "url_hash", name="uq_crawl_store_url_hash"),
+        Index("ix_crawl_status_priority", "status", "priority", "not_before"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    store_id: Mapped[UUID] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
+    url: Mapped[str] = mapped_column(String(1500))
+    url_hash: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(30), default="queued", index=True)
+    priority: Mapped[int] = mapped_column(Integer, default=100)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    not_before: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_http_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    discovered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    store: Mapped[Store] = relationship(back_populates="crawl_queue")
 
 
 class ServiceToken(Base):

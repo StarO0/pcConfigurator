@@ -54,6 +54,22 @@ class GenerateBuildRequest(BaseModel):
     language: Literal["uk", "en", "pl", "ru"] | None = None
 
 
+class ManualBuildRequest(BaseModel):
+    name: str = Field(default="Своя сборка", min_length=1, max_length=160)
+    components: dict[
+        Literal["cpu", "motherboard", "gpu", "ram", "storage", "cooler", "case", "psu"],
+        UUID,
+    ] = Field(min_length=1, max_length=8)
+    currency: str = Field(default="PLN", min_length=3, max_length=3)
+    language: Literal["uk", "en", "pl", "ru"] = "ru"
+    basket_mode: Literal["cheapest", "fewest_stores", "balanced"] = "balanced"
+
+    @field_validator("currency")
+    @classmethod
+    def uppercase_manual_currency(cls, value: str) -> str:
+        return value.upper()
+
+
 class CompatibilityIssue(BaseModel):
     code: str
     severity: Literal["error", "warning", "info"]

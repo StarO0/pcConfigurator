@@ -17,4 +17,8 @@ if [ "${RUN_SEED:-false}" = "true" ]; then
   python -m app.scripts.seed
 fi
 
+if [ "${PRUNE_INCOMPLETE_CATALOG:-false}" = "true" ]; then
+  python -m app.scripts.prune_incomplete_catalog
+fi
+
 exec "$@"

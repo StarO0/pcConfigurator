@@ -10,13 +10,12 @@ import ComponentCell from "@/components/ComponentCell";
 /* ── Props ────────────────────────────────────────────────────── */
 type BuildCardProps = {
   build: Build;
-  buildIndex: number;
 };
 
 
 
 /* ── Component ────────────────────────────────────────────────── */
-export default function BuildCard({ build, buildIndex }: BuildCardProps) {
+export default function BuildCard({ build }: BuildCardProps) {
   const { openReplaceModal, language } = useConfiguratorStore();
 
   return (

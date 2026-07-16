@@ -28,9 +28,9 @@ celery_app.conf.update(
         "app.workers.tasks.check_price_alerts_task": {"queue": "notifications"},
     },
     beat_schedule={
-        "sync-active-stores-every-3-hours": {
+        "sync-active-stores-every-6-hours": {
             "task": "app.workers.tasks.sync_all_stores_task",
-            "schedule": crontab(minute=15, hour="*/3"),
+            "schedule": crontab(minute=15, hour="*/6"),
         },
         "update-nbp-rates-weekdays": {
             "task": "app.workers.tasks.update_currency_rates_task",

@@ -1,0 +1,17 @@
+{
+  "products": [
+    {
+      "name": "Kingston Fury 32GB DDR5 6000",
+      "brand": "Kingston",
+      "category": "ram",
+      "sku": "MY-RAM-32-DDR5",
+      "mpn": "KF560C30BBEK2-32",
+      "performance_score": 70,
+      "specs": {
+        "memory_type": "DDR5",
+        "modules": "2 x 16 GB",
+        "speed_mhz": "6000 MHz"
+      }
+    }
+  ]
+}

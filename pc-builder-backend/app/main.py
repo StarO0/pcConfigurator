@@ -1,14 +1,16 @@
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
+import asyncio
+from contextlib import asynccontextmanager, suppress
 
 import sentry_sdk
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import JSONResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import Response
@@ -26,7 +28,10 @@ from app.core.middleware import (
 from app.db.base import Base
 from app.db.seed import seed_demo_data
 from app.db.session import AsyncSessionLocal, engine
+from app.db.starter_snapshot import ensure_bootstrap_admin, seed_starter_snapshot
 from app.services.cache import cache
+from app.services.harvester.scheduler import scheduler_loop
+from app.services.parsers.source_seed import seed_source_stores
 
 configure_logging()
 if settings.sentry_dsn:
@@ -46,8 +51,25 @@ async def lifespan(_: FastAPI):
     if settings.seed_demo_data:
         async with AsyncSessionLocal() as session:
             await seed_demo_data(session)
+    elif settings.starter_snapshot_enabled:
+        async with AsyncSessionLocal() as session:
+            await seed_starter_snapshot(session)
+    async with AsyncSessionLocal() as session:
+        await ensure_bootstrap_admin(session)
+        await session.commit()
+    async with AsyncSessionLocal() as session:
+        await seed_source_stores(session)
     await cache.connect()
+    scheduler_task = (
+        asyncio.create_task(scheduler_loop(), name="catalog-harvester-scheduler")
+        if settings.harvester_scheduler_enabled
+        else None
+    )
     yield
+    if scheduler_task:
+        scheduler_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await scheduler_task
     await cache.close()
     await engine.dispose()
 
@@ -60,7 +82,6 @@ app = FastAPI(
         "results; deterministic code validates compatibility and selects products."
     ),
     lifespan=lifespan,
-    default_response_class=ORJSONResponse,
     docs_url="/docs" if settings.environment != "production" else None,
     redoc_url="/redoc" if settings.environment != "production" else None,
 )
@@ -90,16 +111,21 @@ app.include_router(api_router, prefix=settings.api_v1_prefix)
 
 
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(_: Request, exc: RequestValidationError) -> ORJSONResponse:
-    return ORJSONResponse(
+async def validation_exception_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
+    errors = []
+    for error in exc.errors():
+        sanitized = dict(error)
+        sanitized.pop("ctx", None)
+        errors.append(sanitized)
+    return JSONResponse(
         status_code=422,
-        content={"detail": "Ошибка валидации", "errors": exc.errors()},
+        content={"detail": "Ошибка валидации", "errors": jsonable_encoder(errors)},
     )
 
 
 @app.exception_handler(IntegrityError)
-async def integrity_exception_handler(_: Request, __: IntegrityError) -> ORJSONResponse:
-    return ORJSONResponse(status_code=409, content={"detail": "Конфликт данных"})
+async def integrity_exception_handler(_: Request, __: IntegrityError) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": "Конфликт данных"})
 
 
 @app.get("/")

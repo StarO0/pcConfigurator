@@ -9,15 +9,23 @@ import { BottleneckWarning } from "@/components/BottleneckWarning";
 import ReplaceModal from "@/components/ReplaceModal";
 import AuthModal from "@/components/AuthModal";
 import SavedBuildsDrawer from "@/components/SavedBuildsDrawer";
+import WorkspaceNav from "@/components/WorkspaceNav";
+import CatalogExplorer from "@/components/CatalogExplorer";
+import CompareCenter from "@/components/CompareCenter";
+import AccountCenter from "@/components/AccountCenter";
+import DataAdmin from "@/components/DataAdmin";
+import { useWorkspaceStore } from "@/store/workspace-store";
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function Home() {
-  const { showResults, appMode } = useConfiguratorStore();
+  const { showResults, appMode, generationError } = useConfiguratorStore();
+  const section = useWorkspaceStore((state) => state.section);
 
   return (
     <main className="min-h-screen flex flex-col">
       <h1 className="sr-only">AI PC Configurator - Generate optimized PC builds using Artificial Intelligence</h1>
       <Header />
+      <WorkspaceNav />
 
       {/* Floating background orbs */}
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
@@ -27,13 +35,23 @@ export default function Home() {
       </div>
 
       {/* Main content area */}
-      <section className="pt-8 flex-1 flex flex-col">
+      {section === "builder" && <section className="pt-8 flex-1 flex flex-col">
         {appMode === "ai" ? <AiChat /> : <ManualConfigurator />}
-      </section>
+        {generationError && (
+          <div className="mx-auto mt-4 max-w-2xl rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            {generationError}
+          </div>
+        )}
+      </section>}
+
+      {section === "catalog" && <CatalogExplorer />}
+      {section === "compare" && <CompareCenter />}
+      {section === "account" && <AccountCenter />}
+      {section === "data" && <DataAdmin />}
 
       {/* Results Section */}
       <AnimatePresence>
-        {showResults && appMode === "ai" && (
+        {section === "builder" && showResults && (
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}

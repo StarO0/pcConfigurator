@@ -6,6 +6,8 @@ from app.api.routes import (
     auth,
     benchmarks,
     builds,
+    catalog,
+    harvester,
     health,
     notifications,
     products,
@@ -17,6 +19,8 @@ api_router.include_router(auth.router)
 api_router.include_router(products.router)
 api_router.include_router(notifications.router)
 api_router.include_router(builds.router)
+api_router.include_router(catalog.router)
 api_router.include_router(analysis.router)
 api_router.include_router(benchmarks.router)
 api_router.include_router(admin.router)
+api_router.include_router(harvester.router)

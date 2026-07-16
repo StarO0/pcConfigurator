@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Cpu, Monitor, MemoryStick, HardDrive, CircuitBoard,
   Zap, Box, Fan, ChevronDown, X, Heart, Check
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
+import { useConfiguratorStore } from "@/store/configurator-store";
 import type { Component, ComponentCategory } from "@/data/builds";
-import builds, { COMPONENT_LABELS } from "@/data/builds";
+import { COMPONENT_LABELS } from "@/data/builds";
+import { api, mapComponent, type ApiCompatibility } from "@/lib/api";
 import PowerBadge from "@/components/PowerBadge";
 
 const CATEGORY_ICONS: Record<ComponentCategory, React.ReactNode> = {
@@ -26,37 +28,88 @@ const CATEGORIES: ComponentCategory[] = [
   "cpu", "gpu", "ram", "ssd", "motherboard", "psu", "case", "cooler"
 ];
 
+const API_CATEGORIES: Record<ComponentCategory, string> = {
+  cpu: "cpu",
+  gpu: "gpu",
+  ram: "ram",
+  ssd: "storage",
+  motherboard: "motherboard",
+  psu: "psu",
+  case: "case",
+  cooler: "cooler",
+};
+
+function emptyOptions(): Record<ComponentCategory, Component[]> {
+  return { cpu: [], gpu: [], ram: [], ssd: [], motherboard: [], psu: [], case: [], cooler: [] };
+}
+
 function formatPLN(v: number) {
   return v.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u00A0") + " zł";
 }
 
 export default function ManualConfigurator() {
-  const { isLoggedIn, saveBuild, openAuthModal } = useAuthStore();
+  const { isLoggedIn, openAuthModal, ensureAccessToken, refreshSavedBuilds } = useAuthStore();
+  const language = useConfiguratorStore((state) => state.language);
   const [selected, setSelected] = useState<Partial<Record<ComponentCategory, Component>>>({});
   const [openDropdown, setOpenDropdown] = useState<ComponentCategory | null>(null);
+  const [componentOptions, setComponentOptions] = useState(emptyOptions);
+  const [loadedCategories, setLoadedCategories] = useState<Set<ComponentCategory>>(new Set());
+  const [loadingCategory, setLoadingCategory] = useState<ComponentCategory | null>(null);
+  const [catalogError, setCatalogError] = useState("");
+  const [compatibility, setCompatibility] = useState<ApiCompatibility | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [savedMessage, setSavedMessage] = useState(false);
-
-  // Collect all unique components from builds data
-  const componentOptions = useMemo(() => {
-    const options: Record<ComponentCategory, Component[]> = {
-      cpu: [], gpu: [], ram: [], ssd: [], motherboard: [], psu: [], case: [], cooler: []
-    };
-    const seen = new Set<string>();
-    for (const build of builds) {
-      for (const cat of CATEGORIES) {
-        const comp = build.components[cat];
-        if (comp && !seen.has(comp.id)) {
-          seen.add(comp.id);
-          options[cat].push(comp);
-        }
-      }
-    }
-    return options;
-  }, []);
 
   const totalPrice = Object.values(selected).reduce((sum, c) => sum + (c?.price ?? 0), 0);
   const totalWatts = Object.values(selected).reduce((sum, c) => sum + (c?.wattage ?? 0), 0);
   const selectedCount = Object.keys(selected).length;
+
+  useEffect(() => {
+    const ids = Object.fromEntries(
+      Object.entries(selected).map(([category, component]) => [
+        API_CATEGORIES[category as ComponentCategory],
+        component.id,
+      ]),
+    );
+    const timeout = window.setTimeout(() => {
+      if (!Object.keys(ids).length) {
+        setCompatibility(null);
+        return;
+      }
+      void api.compatibility(ids, language).then(setCompatibility).catch(() => setCompatibility(null));
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [language, selected]);
+
+  async function loadCategory(category: ComponentCategory) {
+    if (loadedCategories.has(category)) return;
+    setLoadingCategory(category);
+    setCatalogError("");
+    try {
+      const response = await api.products({
+        category: API_CATEGORIES[category],
+        inStock: true,
+        sort: "price",
+        limit: 200,
+      });
+      const options = response.items.map((product) =>
+        mapComponent(category, product, product.offers.find((offer) => offer.in_stock) ?? null),
+      );
+      setComponentOptions((current) => ({ ...current, [category]: options }));
+      setLoadedCategories((current) => new Set(current).add(category));
+    } catch (reason) {
+      setCatalogError(reason instanceof Error ? reason.message : "Не удалось загрузить каталог");
+    } finally {
+      setLoadingCategory(null);
+    }
+  }
+
+  function toggleCategory(category: ComponentCategory) {
+    const next = openDropdown === category ? null : category;
+    setOpenDropdown(next);
+    if (next) void loadCategory(category);
+  }
 
   function handleSelect(cat: ComponentCategory, comp: Component) {
     setSelected((prev) => ({ ...prev, [cat]: comp }));
@@ -71,23 +124,36 @@ export default function ManualConfigurator() {
     });
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!isLoggedIn) {
       openAuthModal("login");
       return;
     }
-    // Build a fake Build object
-    const fakeBuild: import("@/data/builds").Build = {
-      id: `manual-${Date.now()}`,
-      category: "optimal",
-      badge: { label: { en: "Custom", ru: "Своя сборка", uk: "Власна збірка", pl: "Własny" }, color: "#06b6d4" },
-      totalPrice,
-      aiExplanation: { en: "Manually configured build", ru: "Сборка настроена вручную", uk: "Збірка налаштована вручну", pl: "Konfiguracja ręczna" },
-      components: selected as Record<ComponentCategory, Component>,
-    };
-    saveBuild(fakeBuild, `Своя сборка — ${formatPLN(totalPrice)}`);
-    setSavedMessage(true);
-    setTimeout(() => setSavedMessage(false), 2500);
+    setSaving(true);
+    setSaveError("");
+    try {
+      const token = await ensureAccessToken();
+      if (!token) return;
+      const components = Object.fromEntries(
+        Object.entries(selected).map(([category, component]) => [
+          API_CATEGORIES[category as ComponentCategory],
+          component.id,
+        ]),
+      );
+      await api.createManualBuild(
+        components,
+        `Своя сборка — ${formatPLN(totalPrice)}`,
+        language,
+        token,
+      );
+      await refreshSavedBuilds();
+      setSavedMessage(true);
+      window.setTimeout(() => setSavedMessage(false), 2500);
+    } catch (reason) {
+      setSaveError(reason instanceof Error ? reason.message : "Не удалось сохранить сборку");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -99,7 +165,7 @@ export default function ManualConfigurator() {
         className="mb-6"
       >
         <h2 className="text-2xl font-bold text-white mb-1">Ручной конфигуратор</h2>
-        <p className="text-sm text-zinc-500">Выберите комплектующие для своей сборки</p>
+        <p className="text-sm text-zinc-500">Реальные товары и цены из локальной базы с проверкой совместимости</p>
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -131,8 +197,8 @@ export default function ManualConfigurator() {
                   <div
                     role="button"
                     tabIndex={0}
-                    onClick={() => setOpenDropdown(isOpen ? null : cat)}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setOpenDropdown(isOpen ? null : cat); }}
+                    onClick={() => toggleCategory(cat)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") toggleCategory(cat); }}
                     className="w-full flex items-center gap-3 px-4 py-3.5 text-left cursor-pointer outline-none"
                   >
                     <span
@@ -182,8 +248,10 @@ export default function ManualConfigurator() {
                         className="overflow-hidden border-t border-white/[0.06]"
                       >
                         <div className="py-2 max-h-60 overflow-y-auto">
-                          {options.length === 0 ? (
-                            <p className="text-sm text-zinc-600 px-4 py-2">Нет вариантов</p>
+                          {loadingCategory === cat ? (
+                            <p className="text-sm text-cyan-400 px-4 py-2">Загружаем реальные предложения…</p>
+                          ) : options.length === 0 ? (
+                            <p className="text-sm text-zinc-600 px-4 py-2">Нет товаров с импортированной ценой</p>
                           ) : (
                             options.map((comp) => (
                               <button
@@ -199,7 +267,7 @@ export default function ManualConfigurator() {
                                     <p className="text-[11px] text-zinc-500 mt-0.5">
                                       {Object.entries(comp.specs)
                                         .slice(0, 3)
-                                        .map(([k, v]) => `${v}`)
+                                        .map(([, v]) => `${v}`)
                                         .join(" · ")}
                                     </p>
                                   )}
@@ -259,6 +327,24 @@ export default function ManualConfigurator() {
             {/* Power */}
             {totalWatts > 0 && <PowerBadge watts={totalWatts} />}
 
+            {compatibility && (
+              <div className={`mt-4 rounded-xl border p-3 text-xs ${
+                compatibility.status === "incompatible"
+                  ? "border-red-500/20 bg-red-500/10 text-red-300"
+                  : compatibility.status === "warning"
+                    ? "border-amber-500/20 bg-amber-500/10 text-amber-300"
+                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+              }`}>
+                <p className="font-semibold">
+                  {compatibility.status === "compatible" ? "Совместимость подтверждена" : compatibility.status === "warning" ? "Есть предупреждения" : "Компоненты несовместимы"}
+                </p>
+                <p className="mt-1 opacity-80">Пик: ~{compatibility.estimated_peak_power_w} Вт{compatibility.recommended_psu_w ? ` · БП от ${compatibility.recommended_psu_w} Вт` : ""}</p>
+                {compatibility.issues.slice(0, 3).map((issue) => <p key={issue.code} className="mt-1">• {issue.message}</p>)}
+              </div>
+            )}
+
+            {catalogError && <p className="mt-3 text-xs text-red-400">{catalogError}</p>}
+
             {/* Save button */}
             <div className="mt-4">
               <AnimatePresence mode="wait">
@@ -276,14 +362,14 @@ export default function ManualConfigurator() {
                 ) : (
                   <motion.button
                     key="save"
-                    onClick={handleSave}
-                    disabled={selectedCount < 4}
-                    whileHover={{ scale: selectedCount >= 4 ? 1.02 : 1 }}
-                    whileTap={{ scale: selectedCount >= 4 ? 0.98 : 1 }}
+                    onClick={() => void handleSave()}
+                    disabled={selectedCount < 4 || saving || compatibility?.status === "incompatible"}
+                    whileHover={{ scale: selectedCount >= 4 && compatibility?.status !== "incompatible" ? 1.02 : 1 }}
+                    whileTap={{ scale: selectedCount >= 4 && compatibility?.status !== "incompatible" ? 0.98 : 1 }}
                     className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-[#06b6d4] to-[#0ea5e9] text-white text-sm font-semibold shadow-lg shadow-cyan-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   >
                     <Heart className="w-4 h-4" />
-                    {isLoggedIn ? "Сохранить сборку" : "Войдите для сохранения"}
+                    {saving ? "Сохраняем…" : isLoggedIn ? "Сохранить сборку" : "Войдите для сохранения"}
                   </motion.button>
                 )}
               </AnimatePresence>
@@ -294,6 +380,7 @@ export default function ManualConfigurator() {
                 Выберите минимум 4 компонента для сохранения
               </p>
             )}
+            {saveError && <p className="mt-2 text-center text-xs text-red-400">{saveError}</p>}
           </motion.div>
         </div>
       </div>

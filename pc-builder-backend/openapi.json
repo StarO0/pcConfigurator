@@ -3,7 +3,7 @@
   "info": {
     "title": "PC Builder API",
     "description": "Production-oriented AI-assisted PC configurator. AI parses user intent and explains results; deterministic code validates compatibility and selects products.",
-    "version": "2.0.0"
+    "version": "6.1.0"
   },
   "paths": {
     "/api/v1/health": {
@@ -996,6 +996,47 @@
         }
       }
     },
+    "/api/v1/products/compare": {
+      "post": {
+        "tags": [
+          "products"
+        ],
+        "summary": "Compare Products",
+        "operationId": "compare_products_api_v1_products_compare_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductCompareRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductCompareResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/products/{product_id}": {
       "get": {
         "tags": [
@@ -1022,6 +1063,61 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProductOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/products/{product_id}/price-history": {
+      "get": {
+        "tags": [
+          "products"
+        ],
+        "summary": "Product Price History",
+        "operationId": "product_price_history_api_v1_products__product_id__price_history_get",
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Product Id"
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 730,
+              "minimum": 1,
+              "default": 90,
+              "title": "Days"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductPriceHistoryResponse"
                 }
               }
             }
@@ -1453,6 +1549,52 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GenerateBuildResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/builds/manual": {
+      "post": {
+        "tags": [
+          "builds"
+        ],
+        "summary": "Create Manual Build",
+        "operationId": "create_manual_build_api_v1_builds_manual_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualBuildRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildOut"
                 }
               }
             }
@@ -2390,6 +2532,93 @@
         }
       }
     },
+    "/api/v1/catalog/status": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Catalog Status",
+        "operationId": "catalog_status_api_v1_catalog_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogStatusOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/categories": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Category Counts",
+        "operationId": "category_counts_api_v1_catalog_categories_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryCountOut"
+                  },
+                  "type": "array",
+                  "title": "Response Category Counts Api V1 Catalog Categories Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/compatibility": {
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Check Compatibility",
+        "operationId": "check_compatibility_api_v1_catalog_compatibility_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompatibilityCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompatibilityCheckResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/builds/{build_id}/analysis": {
       "get": {
         "tags": [
@@ -2710,6 +2939,98 @@
         ]
       }
     },
+    "/api/v1/admin/product-tools/import": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Import Products",
+        "operationId": "import_products_api_v1_admin_product_tools_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductImportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/file-preview": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Preview Import File",
+        "operationId": "preview_import_file_api_v1_admin_file_preview_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_preview_import_file_api_v1_admin_file_preview_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FilePreviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/admin/products/{product_id}": {
       "patch": {
         "tags": [
@@ -2814,13 +3135,13 @@
         }
       }
     },
-    "/api/v1/admin/products/merge": {
+    "/api/v1/admin/product-tools/merge": {
       "post": {
         "tags": [
           "admin"
         ],
         "summary": "Merge Products",
-        "operationId": "merge_products_api_v1_admin_products_merge_post",
+        "operationId": "merge_products_api_v1_admin_product_tools_merge_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -2858,6 +3179,120 @@
             "HTTPBearer": []
           }
         ]
+      }
+    },
+    "/api/v1/admin/product-tools/duplicates": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Duplicate Products",
+        "operationId": "duplicate_products_api_v1_admin_product_tools_duplicates_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DuplicateGroupOut"
+                  },
+                  "title": "Response Duplicate Products Api V1 Admin Product Tools Duplicates Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/product-tools/normalize": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Normalize Products",
+        "operationId": "normalize_products_api_v1_admin_product_tools_normalize_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dry_run",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Dry Run"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200000,
+              "minimum": 1,
+              "default": 100000,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormalizationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/admin/stores": {
@@ -3198,6 +3633,119 @@
         }
       }
     },
+    "/api/v1/admin/stores/{store_id}/sync-now": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Sync Store Now",
+        "operationId": "sync_store_now_api_v1_admin_stores__store_id__sync_now_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "store_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Store Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserRunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/local-backup": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Local Backup",
+        "operationId": "local_backup_api_v1_admin_local_backup_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/local-restore": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Local Restore",
+        "operationId": "local_restore_api_v1_admin_local_restore_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_local_restore_api_v1_admin_local_restore_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalRestoreResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/admin/parser-runs": {
       "get": {
         "tags": [
@@ -3469,6 +4017,635 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/admin/harvester/dashboard": {
+      "get": {
+        "tags": [
+          "admin-harvester"
+        ],
+        "summary": "Dashboard",
+        "operationId": "dashboard_api_v1_admin_harvester_dashboard_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HarvesterDashboardOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/harvester/enrichment/status": {
+      "get": {
+        "tags": [
+          "admin-harvester"
+        ],
+        "summary": "Enrichment Status",
+        "operationId": "enrichment_status_api_v1_admin_harvester_enrichment_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrichmentStatusOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/harvester/enrichment/run/{store_id}": {
+      "post": {
+        "tags": [
+          "admin-harvester"
+        ],
+        "summary": "Run Enrichment Batch",
+        "operationId": "run_enrichment_batch_api_v1_admin_harvester_enrichment_run__store_id__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "store_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Store Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnrichmentRunRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserRunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/harvester/records": {
+      "get": {
+        "tags": [
+          "admin-harvester"
+        ],
+        "summary": "Records",
+        "operationId": "records_api_v1_admin_harvester_records_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(pending|accepted|rejected|error)$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_HarvestRecordOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/harvester/queue": {
+      "get": {
+        "tags": [
+          "admin-harvester"
+        ],
+        "summary": "Crawl Queue",
+        "operationId": "crawl_queue_api_v1_admin_harvester_queue_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_CrawlQueueOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin-harvester"
+        ],
+        "summary": "Add Queue",
+        "operationId": "add_queue_api_v1_admin_harvester_queue_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueueUrlsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/harvester/browser-import": {
+      "post": {
+        "tags": [
+          "admin-harvester"
+        ],
+        "summary": "Browser Import",
+        "operationId": "browser_import_api_v1_admin_harvester_browser_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HarvesterBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HarvesterImportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/harvester/extract-preview": {
+      "post": {
+        "tags": [
+          "admin-harvester"
+        ],
+        "summary": "Extraction Preview",
+        "operationId": "extraction_preview_api_v1_admin_harvester_extract_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HtmlExtractionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HarvestItem-Output"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/harvester/html-import": {
+      "post": {
+        "tags": [
+          "admin-harvester"
+        ],
+        "summary": "Html Import",
+        "operationId": "html_import_api_v1_admin_harvester_html_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HtmlImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HarvesterImportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/harvester/queue/process/{store_id}": {
+      "post": {
+        "tags": [
+          "admin-harvester"
+        ],
+        "summary": "Process Queued Urls",
+        "operationId": "process_queued_urls_api_v1_admin_harvester_queue_process__store_id__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "store_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Store Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 25,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/harvester/records/{record_id}/approve": {
+      "post": {
+        "tags": [
+          "admin-harvester"
+        ],
+        "summary": "Approve Record",
+        "operationId": "approve_record_api_v1_admin_harvester_records__record_id__approve_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "record_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Record Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HarvesterImportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/harvester/records/{record_id}/reject": {
+      "post": {
+        "tags": [
+          "admin-harvester"
+        ],
+        "summary": "Reject Record",
+        "operationId": "reject_record_api_v1_admin_harvester_records__record_id__reject_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "record_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Record Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/harvester/run-due": {
+      "post": {
+        "tags": [
+          "admin-harvester"
+        ],
+        "summary": "Run Due",
+        "operationId": "run_due_api_v1_admin_harvester_run_due_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HarvesterRunDueOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/": {
@@ -3810,6 +4987,34 @@
           "unit"
         ],
         "title": "BenchmarkResultImport"
+      },
+      "Body_local_restore_api_v1_admin_local_restore_post": {
+        "properties": {
+          "database": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Database"
+          }
+        },
+        "type": "object",
+        "required": [
+          "database"
+        ],
+        "title": "Body_local_restore_api_v1_admin_local_restore_post"
+      },
+      "Body_preview_import_file_api_v1_admin_file_preview_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_preview_import_file_api_v1_admin_file_preview_post"
       },
       "BottleneckAssessment": {
         "properties": {
@@ -4514,6 +5719,130 @@
         ],
         "title": "BuildUpdateRequest"
       },
+      "CatalogSourceOut": {
+        "properties": {
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "configured": {
+            "type": "boolean",
+            "title": "Configured"
+          },
+          "last_success_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Success At"
+          },
+          "last_error_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "slug",
+          "name",
+          "mode",
+          "enabled",
+          "configured"
+        ],
+        "title": "CatalogSourceOut"
+      },
+      "CatalogStatusOut": {
+        "properties": {
+          "products": {
+            "type": "integer",
+            "title": "Products"
+          },
+          "products_with_live_offers": {
+            "type": "integer",
+            "title": "Products With Live Offers"
+          },
+          "active_offers": {
+            "type": "integer",
+            "title": "Active Offers"
+          },
+          "stores": {
+            "type": "integer",
+            "title": "Stores"
+          },
+          "price_history_points": {
+            "type": "integer",
+            "title": "Price History Points"
+          },
+          "full_catalog_loaded": {
+            "type": "boolean",
+            "title": "Full Catalog Loaded"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogSourceOut"
+            },
+            "type": "array",
+            "title": "Sources"
+          }
+        },
+        "type": "object",
+        "required": [
+          "products",
+          "products_with_live_offers",
+          "active_offers",
+          "stores",
+          "price_history_points",
+          "full_catalog_loaded",
+          "sources"
+        ],
+        "title": "CatalogStatusOut"
+      },
+      "CategoryCountOut": {
+        "properties": {
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "products": {
+            "type": "integer",
+            "title": "Products"
+          },
+          "products_with_offers": {
+            "type": "integer",
+            "title": "Products With Offers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "products",
+          "products_with_offers"
+        ],
+        "title": "CategoryCountOut"
+      },
       "ChangePasswordRequest": {
         "properties": {
           "current_password": {
@@ -4552,6 +5881,90 @@
         },
         "type": "object",
         "title": "CloneBuildRequest"
+      },
+      "CompatibilityCheckRequest": {
+        "properties": {
+          "components": {
+            "additionalProperties": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "propertyNames": {
+              "enum": [
+                "cpu",
+                "motherboard",
+                "gpu",
+                "ram",
+                "storage",
+                "cooler",
+                "case",
+                "psu"
+              ]
+            },
+            "type": "object",
+            "maxProperties": 8,
+            "minProperties": 1,
+            "title": "Components"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "ru",
+              "uk",
+              "pl",
+              "en"
+            ],
+            "title": "Language",
+            "default": "ru"
+          }
+        },
+        "type": "object",
+        "required": [
+          "components"
+        ],
+        "title": "CompatibilityCheckRequest"
+      },
+      "CompatibilityCheckResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "compatible",
+              "warning",
+              "incompatible"
+            ],
+            "title": "Status"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/CompatibilityIssue"
+            },
+            "type": "array",
+            "title": "Issues"
+          },
+          "estimated_peak_power_w": {
+            "type": "integer",
+            "title": "Estimated Peak Power W"
+          },
+          "recommended_psu_w": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recommended Psu W"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "issues",
+          "estimated_peak_power_w"
+        ],
+        "title": "CompatibilityCheckResponse"
       },
       "CompatibilityIssue": {
         "properties": {
@@ -4706,6 +6119,378 @@
         ],
         "title": "ComponentDifference"
       },
+      "CrawlQueueOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "store_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Store Id"
+          },
+          "store_slug": {
+            "type": "string",
+            "title": "Store Slug"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "priority": {
+            "type": "integer",
+            "title": "Priority"
+          },
+          "attempts": {
+            "type": "integer",
+            "title": "Attempts"
+          },
+          "not_before": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Not Before"
+          },
+          "last_http_status": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Http Status"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "discovered_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Discovered At"
+          },
+          "processed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "store_id",
+          "store_slug",
+          "url",
+          "status",
+          "priority",
+          "attempts",
+          "not_before",
+          "last_http_status",
+          "last_error",
+          "discovered_at",
+          "processed_at"
+        ],
+        "title": "CrawlQueueOut"
+      },
+      "DuplicateGroupOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/DuplicateProductOut"
+            },
+            "type": "array",
+            "title": "Products"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "reason",
+          "products"
+        ],
+        "title": "DuplicateGroupOut"
+      },
+      "DuplicateProductOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "brand": {
+            "type": "string",
+            "title": "Brand"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "sku": {
+            "type": "string",
+            "title": "Sku"
+          },
+          "ean": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ean"
+          },
+          "mpn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mpn"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "category",
+          "brand",
+          "name",
+          "sku",
+          "ean",
+          "mpn"
+        ],
+        "title": "DuplicateProductOut"
+      },
+      "EnrichmentRunRequest": {
+        "properties": {
+          "pages": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Pages",
+            "default": 25
+          },
+          "terms_confirmed": {
+            "type": "boolean",
+            "title": "Terms Confirmed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "terms_confirmed"
+        ],
+        "title": "EnrichmentRunRequest"
+      },
+      "EnrichmentStatusOut": {
+        "properties": {
+          "products": {
+            "type": "integer",
+            "title": "Products"
+          },
+          "products_with_images": {
+            "type": "integer",
+            "title": "Products With Images"
+          },
+          "products_with_offers": {
+            "type": "integer",
+            "title": "Products With Offers"
+          },
+          "products_complete": {
+            "type": "integer",
+            "title": "Products Complete"
+          },
+          "products_with_multiple_stores": {
+            "type": "integer",
+            "title": "Products With Multiple Stores"
+          },
+          "missing_images": {
+            "type": "integer",
+            "title": "Missing Images"
+          },
+          "missing_offers": {
+            "type": "integer",
+            "title": "Missing Offers"
+          },
+          "coverage_percent": {
+            "type": "number",
+            "title": "Coverage Percent"
+          },
+          "pending_ambiguous": {
+            "type": "integer",
+            "title": "Pending Ambiguous"
+          },
+          "stores": {
+            "items": {
+              "$ref": "#/components/schemas/EnrichmentStoreOut"
+            },
+            "type": "array",
+            "title": "Stores"
+          }
+        },
+        "type": "object",
+        "required": [
+          "products",
+          "products_with_images",
+          "products_with_offers",
+          "products_complete",
+          "products_with_multiple_stores",
+          "missing_images",
+          "missing_offers",
+          "coverage_percent",
+          "pending_ambiguous",
+          "stores"
+        ],
+        "title": "EnrichmentStatusOut"
+      },
+      "EnrichmentStoreOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "terms_confirmed": {
+            "type": "boolean",
+            "title": "Terms Confirmed"
+          },
+          "discovered_urls": {
+            "type": "integer",
+            "title": "Discovered Urls"
+          },
+          "crawl_offset": {
+            "type": "integer",
+            "title": "Crawl Offset"
+          },
+          "last_batch": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Last Batch"
+          },
+          "last_discovery_batch": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Last Discovery Batch"
+          },
+          "last_run_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Run Status"
+          },
+          "last_error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error Message"
+          },
+          "last_success_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Success At"
+          },
+          "last_error_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "is_active",
+          "terms_confirmed",
+          "discovered_urls",
+          "crawl_offset",
+          "last_batch",
+          "last_discovery_batch",
+          "last_run_status",
+          "last_error_message",
+          "last_success_at",
+          "last_error_at"
+        ],
+        "title": "EnrichmentStoreOut"
+      },
       "FavoriteResponse": {
         "properties": {
           "product_id": {
@@ -4724,6 +6509,33 @@
           "favorite"
         ],
         "title": "FavoriteResponse"
+      },
+      "FilePreviewResponse": {
+        "properties": {
+          "rows": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "rows",
+          "total"
+        ],
+        "title": "FilePreviewResponse"
       },
       "GenerateBuildRequest": {
         "properties": {
@@ -5010,6 +6822,861 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "HarvestItem-Input": {
+        "properties": {
+          "product_sku": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Sku"
+          },
+          "ean": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ean"
+          },
+          "mpn": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mpn"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 2,
+            "title": "Title"
+          },
+          "store_slug": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 2,
+            "title": "Store Slug"
+          },
+          "external_id": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "External Id"
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 2083,
+            "minLength": 1,
+            "format": "uri",
+            "title": "Url"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "shipping_price": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Shipping Price",
+            "default": "0"
+          },
+          "currency": {
+            "type": "string",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "default": "PLN"
+          },
+          "in_stock": {
+            "type": "boolean",
+            "title": "In Stock",
+            "default": true
+          },
+          "stock_quantity": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stock Quantity"
+          },
+          "condition": {
+            "type": "string",
+            "enum": [
+              "new",
+              "used",
+              "refurbished"
+            ],
+            "title": "Condition",
+            "default": "new"
+          },
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2083,
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "specs": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Specs"
+          },
+          "source_metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Source Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "store_slug",
+          "external_id",
+          "url"
+        ],
+        "title": "HarvestItem"
+      },
+      "HarvestItem-Output": {
+        "properties": {
+          "product_sku": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Sku"
+          },
+          "ean": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ean"
+          },
+          "mpn": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mpn"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 2,
+            "title": "Title"
+          },
+          "store_slug": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 2,
+            "title": "Store Slug"
+          },
+          "external_id": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "External Id"
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 2083,
+            "minLength": 1,
+            "format": "uri",
+            "title": "Url"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "shipping_price": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Shipping Price",
+            "default": "0"
+          },
+          "currency": {
+            "type": "string",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "default": "PLN"
+          },
+          "in_stock": {
+            "type": "boolean",
+            "title": "In Stock",
+            "default": true
+          },
+          "stock_quantity": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stock Quantity"
+          },
+          "condition": {
+            "type": "string",
+            "enum": [
+              "new",
+              "used",
+              "refurbished"
+            ],
+            "title": "Condition",
+            "default": "new"
+          },
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2083,
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "specs": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Specs"
+          },
+          "source_metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Source Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "store_slug",
+          "external_id",
+          "url"
+        ],
+        "title": "HarvestItem"
+      },
+      "HarvestRecordOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "store_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Store Id"
+          },
+          "store_slug": {
+            "type": "string",
+            "title": "Store Slug"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "source_url": {
+            "type": "string",
+            "title": "Source Url"
+          },
+          "external_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "match_confidence": {
+            "type": "number",
+            "title": "Match Confidence"
+          },
+          "match_method": {
+            "type": "string",
+            "title": "Match Method"
+          },
+          "quality_score": {
+            "type": "number",
+            "title": "Quality Score"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "discovered_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Discovered At"
+          },
+          "processed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "store_id",
+          "store_slug",
+          "product_id",
+          "source_url",
+          "external_id",
+          "status",
+          "title",
+          "brand",
+          "category",
+          "price",
+          "currency",
+          "image_url",
+          "match_confidence",
+          "match_method",
+          "quality_score",
+          "error_message",
+          "discovered_at",
+          "processed_at"
+        ],
+        "title": "HarvestRecordOut"
+      },
+      "HarvesterBatchRequest": {
+        "properties": {
+          "source_slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{1,78}[a-z0-9]$",
+            "title": "Source Slug"
+          },
+          "source_name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 2,
+            "title": "Source Name"
+          },
+          "source_base_url": {
+            "type": "string",
+            "maxLength": 2083,
+            "minLength": 1,
+            "format": "uri",
+            "title": "Source Base Url"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HarvestItem-Input"
+            },
+            "type": "array",
+            "maxItems": 10000,
+            "minItems": 1,
+            "title": "Items"
+          },
+          "create_products": {
+            "type": "boolean",
+            "title": "Create Products",
+            "default": true
+          },
+          "auto_accept": {
+            "type": "boolean",
+            "title": "Auto Accept",
+            "default": true
+          },
+          "terms_confirmed": {
+            "type": "boolean",
+            "title": "Terms Confirmed",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_slug",
+          "source_name",
+          "source_base_url",
+          "items"
+        ],
+        "title": "HarvesterBatchRequest"
+      },
+      "HarvesterDashboardOut": {
+        "properties": {
+          "records": {
+            "type": "integer",
+            "title": "Records"
+          },
+          "accepted": {
+            "type": "integer",
+            "title": "Accepted"
+          },
+          "pending": {
+            "type": "integer",
+            "title": "Pending"
+          },
+          "rejected": {
+            "type": "integer",
+            "title": "Rejected"
+          },
+          "errors": {
+            "type": "integer",
+            "title": "Errors"
+          },
+          "queued_urls": {
+            "type": "integer",
+            "title": "Queued Urls"
+          },
+          "products": {
+            "type": "integer",
+            "title": "Products"
+          },
+          "products_with_images": {
+            "type": "integer",
+            "title": "Products With Images"
+          },
+          "image_coverage_percent": {
+            "type": "number",
+            "title": "Image Coverage Percent"
+          },
+          "active_offers": {
+            "type": "integer",
+            "title": "Active Offers"
+          },
+          "snapshot_offers": {
+            "type": "integer",
+            "title": "Snapshot Offers"
+          },
+          "source_count": {
+            "type": "integer",
+            "title": "Source Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "records",
+          "accepted",
+          "pending",
+          "rejected",
+          "errors",
+          "queued_urls",
+          "products",
+          "products_with_images",
+          "image_coverage_percent",
+          "active_offers",
+          "snapshot_offers",
+          "source_count"
+        ],
+        "title": "HarvesterDashboardOut"
+      },
+      "HarvesterImportResponse": {
+        "properties": {
+          "received": {
+            "type": "integer",
+            "title": "Received"
+          },
+          "accepted": {
+            "type": "integer",
+            "title": "Accepted"
+          },
+          "pending": {
+            "type": "integer",
+            "title": "Pending"
+          },
+          "rejected": {
+            "type": "integer",
+            "title": "Rejected"
+          },
+          "products_created": {
+            "type": "integer",
+            "title": "Products Created"
+          },
+          "products_updated": {
+            "type": "integer",
+            "title": "Products Updated"
+          },
+          "offers_created": {
+            "type": "integer",
+            "title": "Offers Created"
+          },
+          "offers_updated": {
+            "type": "integer",
+            "title": "Offers Updated"
+          },
+          "duplicates": {
+            "type": "integer",
+            "title": "Duplicates"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Errors"
+          }
+        },
+        "type": "object",
+        "required": [
+          "received",
+          "accepted",
+          "pending",
+          "rejected",
+          "products_created",
+          "products_updated",
+          "offers_created",
+          "offers_updated",
+          "duplicates"
+        ],
+        "title": "HarvesterImportResponse"
+      },
+      "HarvesterRunDueOut": {
+        "properties": {
+          "checked": {
+            "type": "integer",
+            "title": "Checked"
+          },
+          "started": {
+            "type": "integer",
+            "title": "Started"
+          },
+          "skipped": {
+            "type": "integer",
+            "title": "Skipped"
+          },
+          "runs": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Runs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "checked",
+          "started",
+          "skipped"
+        ],
+        "title": "HarvesterRunDueOut"
+      },
+      "HtmlExtractionRequest": {
+        "properties": {
+          "html": {
+            "type": "string",
+            "maxLength": 5000000,
+            "minLength": 20,
+            "title": "Html"
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 2083,
+            "minLength": 1,
+            "format": "uri",
+            "title": "Url"
+          },
+          "store_slug": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 2,
+            "title": "Store Slug"
+          },
+          "selectors": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Selectors"
+          }
+        },
+        "type": "object",
+        "required": [
+          "html",
+          "url",
+          "store_slug"
+        ],
+        "title": "HtmlExtractionRequest"
+      },
+      "HtmlImportRequest": {
+        "properties": {
+          "html": {
+            "type": "string",
+            "maxLength": 5000000,
+            "minLength": 20,
+            "title": "Html"
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 2083,
+            "minLength": 1,
+            "format": "uri",
+            "title": "Url"
+          },
+          "store_slug": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 2,
+            "title": "Store Slug"
+          },
+          "selectors": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Selectors"
+          },
+          "source_name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 2,
+            "title": "Source Name"
+          },
+          "create_products": {
+            "type": "boolean",
+            "title": "Create Products",
+            "default": true
+          },
+          "auto_accept": {
+            "type": "boolean",
+            "title": "Auto Accept",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "html",
+          "url",
+          "store_slug",
+          "source_name"
+        ],
+        "title": "HtmlImportRequest"
+      },
+      "LocalRestoreResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "restart_required": {
+            "type": "boolean",
+            "title": "Restart Required",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "LocalRestoreResponse"
+      },
       "LoginRequest": {
         "properties": {
           "email": {
@@ -5055,6 +7722,72 @@
         "type": "object",
         "title": "LogoutRequest"
       },
+      "ManualBuildRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Name",
+            "default": "Своя сборка"
+          },
+          "components": {
+            "additionalProperties": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "propertyNames": {
+              "enum": [
+                "cpu",
+                "motherboard",
+                "gpu",
+                "ram",
+                "storage",
+                "cooler",
+                "case",
+                "psu"
+              ]
+            },
+            "type": "object",
+            "maxProperties": 8,
+            "minProperties": 1,
+            "title": "Components"
+          },
+          "currency": {
+            "type": "string",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "default": "PLN"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "uk",
+              "en",
+              "pl",
+              "ru"
+            ],
+            "title": "Language",
+            "default": "ru"
+          },
+          "basket_mode": {
+            "type": "string",
+            "enum": [
+              "cheapest",
+              "fewest_stores",
+              "balanced"
+            ],
+            "title": "Basket Mode",
+            "default": "balanced"
+          }
+        },
+        "type": "object",
+        "required": [
+          "components"
+        ],
+        "title": "ManualBuildRequest"
+      },
       "MergeProductsRequest": {
         "properties": {
           "source_product_id": {
@@ -5087,6 +7820,29 @@
           "message"
         ],
         "title": "MessageResponse"
+      },
+      "NormalizationResponse": {
+        "properties": {
+          "scanned": {
+            "type": "integer",
+            "title": "Scanned"
+          },
+          "changed": {
+            "type": "integer",
+            "title": "Changed"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "title": "Dry Run"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scanned",
+          "changed",
+          "dry_run"
+        ],
+        "title": "NormalizationResponse"
       },
       "NotificationOut": {
         "properties": {
@@ -5265,6 +8021,54 @@
             ],
             "title": "Condition",
             "default": "new"
+          },
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2083,
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "specs": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Specs"
+          },
+          "source_metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Source Metadata"
           }
         },
         "type": "object",
@@ -5383,6 +8187,11 @@
             ],
             "title": "Stock Quantity"
           },
+          "source_metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Source Metadata"
+          },
           "fetched_at": {
             "type": "string",
             "format": "date-time",
@@ -5466,6 +8275,72 @@
           "offset"
         ],
         "title": "Page[AuditLogOut]"
+      },
+      "Page_CrawlQueueOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CrawlQueueOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[CrawlQueueOut]"
+      },
+      "Page_HarvestRecordOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HarvestRecordOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[HarvestRecordOut]"
       },
       "Page_NotificationOut_": {
         "properties": {
@@ -5949,6 +8824,87 @@
         ],
         "title": "PricePointOut"
       },
+      "ProductCompareRequest": {
+        "properties": {
+          "product_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 2,
+            "title": "Product Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_ids"
+        ],
+        "title": "ProductCompareRequest"
+      },
+      "ProductCompareResponse": {
+        "properties": {
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/ProductOut"
+            },
+            "type": "array",
+            "title": "Products"
+          },
+          "common_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Common Category"
+          },
+          "spec_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Spec Keys"
+          },
+          "lowest_effective_price_product_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lowest Effective Price Product Id"
+          },
+          "highest_performance_product_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Highest Performance Product Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "products",
+          "common_category",
+          "spec_keys",
+          "lowest_effective_price_product_id",
+          "highest_performance_product_id"
+        ],
+        "title": "ProductCompareResponse"
+      },
       "ProductCreate": {
         "properties": {
           "category": {
@@ -6013,6 +8969,55 @@
             ],
             "title": "Image Url"
           },
+          "gallery_urls": {
+            "items": {
+              "type": "string",
+              "maxLength": 2083,
+              "minLength": 1,
+              "format": "uri"
+            },
+            "type": "array",
+            "maxItems": 24,
+            "title": "Gallery Urls"
+          },
+          "canonical_source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Source"
+          },
+          "canonical_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Id"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2083,
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
           "release_date": {
             "anyOf": [
               {
@@ -6076,6 +9081,200 @@
           "sku"
         ],
         "title": "ProductCreate"
+      },
+      "ProductImportItem": {
+        "properties": {
+          "category": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 2,
+            "title": "Category"
+          },
+          "brand": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Brand",
+            "default": "Unknown"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 2,
+            "title": "Name"
+          },
+          "sku": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 2,
+            "title": "Sku"
+          },
+          "ean": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ean"
+          },
+          "mpn": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mpn"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2083,
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "gallery_urls": {
+            "items": {
+              "type": "string",
+              "maxLength": 2083,
+              "minLength": 1,
+              "format": "uri"
+            },
+            "type": "array",
+            "maxItems": 24,
+            "title": "Gallery Urls"
+          },
+          "canonical_source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Source"
+          },
+          "canonical_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Id"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2083,
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "performance_score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Performance Score"
+          },
+          "specs": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Specs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "name",
+          "sku"
+        ],
+        "title": "ProductImportItem"
+      },
+      "ProductImportRequest": {
+        "properties": {
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/ProductImportItem"
+            },
+            "type": "array",
+            "maxItems": 20000,
+            "minItems": 1,
+            "title": "Products"
+          },
+          "update_existing": {
+            "type": "boolean",
+            "title": "Update Existing",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "products"
+        ],
+        "title": "ProductImportRequest"
+      },
+      "ProductImportResponse": {
+        "properties": {
+          "created": {
+            "type": "integer",
+            "title": "Created"
+          },
+          "updated": {
+            "type": "integer",
+            "title": "Updated"
+          },
+          "skipped": {
+            "type": "integer",
+            "title": "Skipped"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Errors",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "created",
+          "updated",
+          "skipped"
+        ],
+        "title": "ProductImportResponse"
       },
       "ProductListResponse": {
         "properties": {
@@ -6166,6 +9365,46 @@
             ],
             "title": "Image Url"
           },
+          "gallery_urls": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Gallery Urls"
+          },
+          "canonical_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Source"
+          },
+          "canonical_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Id"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
           "release_date": {
             "anyOf": [
               {
@@ -6245,6 +9484,75 @@
         ],
         "title": "ProductOut"
       },
+      "ProductPriceHistoryResponse": {
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Product Id"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/ProductPricePointOut"
+            },
+            "type": "array",
+            "title": "Points"
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_id",
+          "points"
+        ],
+        "title": "ProductPriceHistoryResponse"
+      },
+      "ProductPricePointOut": {
+        "properties": {
+          "price": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Price"
+          },
+          "shipping_price": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Shipping Price"
+          },
+          "in_stock": {
+            "type": "boolean",
+            "title": "In Stock"
+          },
+          "recorded_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recorded At"
+          },
+          "offer_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Offer Id"
+          },
+          "store_name": {
+            "type": "string",
+            "title": "Store Name"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          }
+        },
+        "type": "object",
+        "required": [
+          "price",
+          "shipping_price",
+          "in_stock",
+          "recorded_at",
+          "offer_id",
+          "store_name",
+          "currency"
+        ],
+        "title": "ProductPricePointOut"
+      },
       "ProductUpdate": {
         "properties": {
           "version": {
@@ -6315,6 +9623,62 @@
               }
             ],
             "title": "Image Url"
+          },
+          "gallery_urls": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "maxLength": 2083,
+                  "minLength": 1,
+                  "format": "uri"
+                },
+                "type": "array",
+                "maxItems": 24
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gallery Urls"
+          },
+          "canonical_source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Source"
+          },
+          "canonical_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Id"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2083,
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
           },
           "release_date": {
             "anyOf": [
@@ -6424,6 +9788,39 @@
           "version"
         ],
         "title": "ProductUpdate"
+      },
+      "QueueUrlsRequest": {
+        "properties": {
+          "store_slug": {
+            "type": "string",
+            "title": "Store Slug"
+          },
+          "urls": {
+            "items": {
+              "type": "string",
+              "maxLength": 2083,
+              "minLength": 1,
+              "format": "uri"
+            },
+            "type": "array",
+            "maxItems": 50000,
+            "minItems": 1,
+            "title": "Urls"
+          },
+          "priority": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Priority",
+            "default": 100
+          }
+        },
+        "type": "object",
+        "required": [
+          "store_slug",
+          "urls"
+        ],
+        "title": "QueueUrlsRequest"
       },
       "RefreshRequest": {
         "properties": {
@@ -6756,9 +10153,17 @@
             "type": "string",
             "enum": [
               "manual",
+              "browser_snapshot",
               "json",
               "csv",
-              "api"
+              "xml",
+              "yml",
+              "api",
+              "html_selector",
+              "jsonld_sitemap",
+              "catalog_enrichment",
+              "catalog_acquisition",
+              "ceneo"
             ],
             "title": "Parser Type",
             "default": "manual"
@@ -6804,6 +10209,15 @@
             "type": "boolean",
             "title": "Is Active"
           },
+          "parser_type": {
+            "type": "string",
+            "title": "Parser Type"
+          },
+          "parser_config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Parser Config"
+          },
           "last_success_at": {
             "anyOf": [
               {
@@ -6824,7 +10238,8 @@
           "name",
           "base_url",
           "country",
-          "is_active"
+          "is_active",
+          "parser_type"
         ],
         "title": "StoreOut"
       },
@@ -6863,9 +10278,17 @@
                 "type": "string",
                 "enum": [
                   "manual",
+                  "browser_snapshot",
                   "json",
                   "csv",
-                  "api"
+                  "xml",
+                  "yml",
+                  "api",
+                  "html_selector",
+                  "jsonld_sitemap",
+                  "catalog_enrichment",
+                  "catalog_acquisition",
+                  "ceneo"
                 ]
               },
               {

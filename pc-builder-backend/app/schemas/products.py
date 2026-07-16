@@ -15,6 +15,8 @@ class StoreOut(BaseModel):
     base_url: str
     country: str
     is_active: bool
+    parser_type: str
+    parser_config: dict[str, Any] = Field(default_factory=dict)
     last_success_at: datetime | None = None
 
 
@@ -29,6 +31,7 @@ class OfferOut(BaseModel):
     currency: str
     in_stock: bool
     stock_quantity: int | None
+    source_metadata: dict[str, Any] = Field(default_factory=dict)
     fetched_at: datetime
     stale: bool = False
 
@@ -58,6 +61,10 @@ class ProductOut(BaseModel):
     ean: str | None
     mpn: str | None
     image_url: str | None
+    gallery_urls: list[str] = Field(default_factory=list)
+    canonical_source: str | None = None
+    canonical_id: str | None = None
+    source_url: str | None = None
     release_date: date | None
     performance_score: float
     noise_score: float
@@ -74,6 +81,25 @@ class ProductListResponse(Page[ProductOut]):
     pass
 
 
+class ProductCompareRequest(BaseModel):
+    product_ids: list[UUID] = Field(min_length=2, max_length=4)
+
+    @field_validator("product_ids")
+    @classmethod
+    def unique_products(cls, value: list[UUID]) -> list[UUID]:
+        if len(set(value)) != len(value):
+            raise ValueError("product_ids must be unique")
+        return value
+
+
+class ProductCompareResponse(BaseModel):
+    products: list[ProductOut]
+    common_category: str | None
+    spec_keys: list[str]
+    lowest_effective_price_product_id: UUID | None
+    highest_performance_product_id: UUID | None
+
+
 class ProductCreate(BaseModel):
     category: str = Field(min_length=2, max_length=40)
     brand: str = Field(min_length=1, max_length=100)
@@ -82,6 +108,10 @@ class ProductCreate(BaseModel):
     ean: str | None = Field(default=None, max_length=32)
     mpn: str | None = Field(default=None, max_length=120)
     image_url: HttpUrl | None = None
+    gallery_urls: list[HttpUrl] = Field(default_factory=list, max_length=24)
+    canonical_source: str | None = Field(default=None, max_length=50)
+    canonical_id: str | None = Field(default=None, max_length=120)
+    source_url: HttpUrl | None = None
     release_date: date | None = None
     performance_score: float = Field(default=0, ge=0)
     noise_score: float = Field(default=50, ge=0, le=100)
@@ -98,6 +128,10 @@ class ProductUpdate(BaseModel):
     ean: str | None = Field(default=None, max_length=32)
     mpn: str | None = Field(default=None, max_length=120)
     image_url: HttpUrl | None = None
+    gallery_urls: list[HttpUrl] | None = Field(default=None, max_length=24)
+    canonical_source: str | None = Field(default=None, max_length=50)
+    canonical_id: str | None = Field(default=None, max_length=120)
+    source_url: HttpUrl | None = None
     release_date: date | None = None
     performance_score: float | None = Field(default=None, ge=0)
     noise_score: float | None = Field(default=None, ge=0, le=100)
@@ -113,14 +147,43 @@ class StoreCreate(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     base_url: HttpUrl
     country: str = Field(default="PL", min_length=2, max_length=2)
-    parser_type: Literal["manual", "json", "csv", "api"] = "manual"
+    parser_type: Literal[
+        "manual",
+        "browser_snapshot",
+        "json",
+        "csv",
+        "xml",
+        "yml",
+        "api",
+        "html_selector",
+        "jsonld_sitemap",
+        "catalog_enrichment",
+        "catalog_acquisition",
+        "ceneo",
+    ] = "manual"
     parser_config: dict[str, Any] = Field(default_factory=dict)
 
 
 class StoreUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=120)
     base_url: HttpUrl | None = None
-    parser_type: Literal["manual", "json", "csv", "api"] | None = None
+    parser_type: (
+        Literal[
+            "manual",
+            "browser_snapshot",
+            "json",
+            "csv",
+            "xml",
+            "yml",
+            "api",
+            "html_selector",
+            "jsonld_sitemap",
+            "catalog_enrichment",
+            "catalog_acquisition",
+            "ceneo",
+        ]
+        | None
+    ) = None
     parser_config: dict[str, Any] | None = None
     is_active: bool | None = None
 
@@ -139,6 +202,11 @@ class OfferImportItem(BaseModel):
     in_stock: bool = True
     stock_quantity: int | None = Field(default=None, ge=0)
     condition: Literal["new", "used", "refurbished"] = "new"
+    brand: str | None = Field(default=None, max_length=100)
+    category: str | None = Field(default=None, max_length=40)
+    image_url: HttpUrl | None = None
+    specs: dict[str, Any] = Field(default_factory=dict)
+    source_metadata: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("currency")
     @classmethod
@@ -169,6 +237,45 @@ class PriceHistoryResponse(BaseModel):
     points: list[PricePointOut]
 
 
+class ProductPricePointOut(PricePointOut):
+    offer_id: UUID
+    store_name: str
+    currency: str
+
+
+class ProductPriceHistoryResponse(BaseModel):
+    product_id: UUID
+    points: list[ProductPricePointOut]
+
+
 class FavoriteResponse(BaseModel):
     product_id: UUID
     favorite: bool
+
+
+class ProductImportItem(BaseModel):
+    category: str = Field(min_length=2, max_length=40)
+    brand: str = Field(default="Unknown", min_length=1, max_length=100)
+    name: str = Field(min_length=2, max_length=255)
+    sku: str = Field(min_length=2, max_length=120)
+    ean: str | None = Field(default=None, max_length=32)
+    mpn: str | None = Field(default=None, max_length=120)
+    image_url: HttpUrl | None = None
+    gallery_urls: list[HttpUrl] = Field(default_factory=list, max_length=24)
+    canonical_source: str | None = Field(default=None, max_length=50)
+    canonical_id: str | None = Field(default=None, max_length=120)
+    source_url: HttpUrl | None = None
+    performance_score: float | None = Field(default=None, ge=0)
+    specs: dict[str, Any] = Field(default_factory=dict)
+
+
+class ProductImportRequest(BaseModel):
+    products: list[ProductImportItem] = Field(min_length=1, max_length=20_000)
+    update_existing: bool = True
+
+
+class ProductImportResponse(BaseModel):
+    created: int
+    updated: int
+    skipped: int
+    errors: list[str] = []

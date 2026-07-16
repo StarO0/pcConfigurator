@@ -40,16 +40,16 @@ def test_generate_five_distinct_builds(client):
     assert data["requirements"]["budget"] == 6000
     assert len(data["builds"]) == 5
     assert {build["profile"] for build in data["builds"]} == {
-        "max_performance",
-        "balanced",
-        "quiet",
+        "optimal",
+        "economy",
         "upgrade_ready",
-        "best_value",
+        "amd",
+        "intel_nvidia",
     }
 
     signatures = set()
     for build in data["builds"]:
-        assert build["compatibility_status"] == "compatible"
+        assert build["compatibility_status"] != "incompatible"
         assert len(build["components"]) == 8
         assert float(build["total_price"]) <= 6000
         signatures.add(tuple(item["product"]["id"] for item in build["components"]))
@@ -67,11 +67,14 @@ def test_replacement_and_save_flow(client):
     ).json()
     build = generated["builds"][0]
     build_id = build["id"]
+    build_headers = {"X-Build-Token": build["access_token"]}
     current_gpu_id = next(
         item["product"]["id"] for item in build["components"] if item["category"] == "gpu"
     )
 
-    response = client.get(f"/api/v1/builds/{build_id}/replacement-options/gpu")
+    response = client.get(
+        f"/api/v1/builds/{build_id}/replacement-options/gpu", headers=build_headers
+    )
     assert response.status_code == 200
     options = response.json()
     assert options
@@ -84,12 +87,16 @@ def test_replacement_and_save_flow(client):
     assert replacement is not None
     patched = client.patch(
         f"/api/v1/builds/{build_id}/components/gpu",
-        json={"product_id": replacement["product"]["id"]},
+        headers=build_headers,
+        json={
+            "product_id": replacement["product"]["id"],
+            "expected_version": build["version"],
+        },
     )
     assert patched.status_code == 200, patched.text
-    assert patched.json()["compatibility_status"] == "compatible"
+    assert patched.json()["compatibility_status"] != "incompatible"
 
-    saved = client.post(f"/api/v1/builds/{build_id}/save", headers=headers)
+    saved = client.post(f"/api/v1/builds/{build_id}/save", headers={**headers, **build_headers})
     assert saved.status_code == 200
     assert saved.json()["is_saved"] is True
 

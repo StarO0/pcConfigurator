@@ -58,9 +58,13 @@ def sync_store_task(self, store_id: str) -> dict:
 async def _active_store_ids() -> list[str]:
     async with AsyncSessionLocal() as session:
         result = await session.execute(
-            select(Store.id).where(Store.is_active.is_(True), Store.parser_type != "manual")
+            select(Store).where(Store.is_active.is_(True), Store.parser_type != "manual")
         )
-        return [str(item) for item in result.scalars()]
+        return [
+            str(item.id)
+            for item in result.scalars()
+            if item.parser_type == "ceneo" or (item.parser_config or {}).get("terms_confirmed")
+        ]
 
 
 @celery_app.task

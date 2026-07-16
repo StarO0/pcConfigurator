@@ -12,6 +12,10 @@ services:
       RUN_MIGRATIONS: "true"
       RUN_SEED: "true"
       AUTO_CREATE_TABLES: "false"
+      STARTER_SNAPSHOT_ENABLED: "true"
+      STARTER_SNAPSHOT_PATH: data/starter-snapshot-pl-2026-07-15.json
+      PRUNE_INCOMPLETE_CATALOG: "true"
+      OPEN_ICECAT_ENABLED: "true"
     depends_on:
       db:
         condition: service_healthy
@@ -33,6 +37,7 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
       AUTO_CREATE_TABLES: "false"
+      OPEN_ICECAT_ENABLED: "true"
     depends_on:
       api:
         condition: service_healthy
@@ -47,18 +52,17 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
       AUTO_CREATE_TABLES: "false"
+      OPEN_ICECAT_ENABLED: "true"
     depends_on:
       api:
         condition: service_healthy
 
   db:
-    image: postgres:16-alpine
+    image: postgres:15-alpine
     environment:
       POSTGRES_DB: pcbuilder
       POSTGRES_USER: pcbuilder
       POSTGRES_PASSWORD: pcbuilder
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -70,8 +74,6 @@ services:
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--appendonly", "yes"]
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:

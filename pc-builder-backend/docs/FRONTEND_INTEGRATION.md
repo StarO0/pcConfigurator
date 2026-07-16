@@ -8,7 +8,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 
 ## Рекомендуемый поток страницы
 
-1. `generateBuilds()` — получить пять сборок и сохранить guest tokens.
+1. `generateBuilds()` — получить до пяти доступных профилей сборки и сохранить guest tokens.
 2. Показать карусель по `profile`.
 3. `getAnalysis()` для активного слайда через TanStack Query.
 4. При открытии детали вызвать `getReplacementOptions(..., {sort: "smart"})`.

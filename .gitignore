@@ -1,0 +1,15 @@
+.env
+*.db
+*.db-journal
+.idea/
+**/__pycache__/
+**/.pytest_cache/
+**/.ruff_cache/
+pc-builder-backend/.venv/
+pc-builder-backend/data/harvester-cache/
+pc-builder-backend/data/pcpart-dataset/
+front/node_modules/
+front/node_modules.failed-install-*/
+front/.next/
+front/out/
+*.log

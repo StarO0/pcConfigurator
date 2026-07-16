@@ -1,7 +1,7 @@
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-exclude = ["migrations/versions"]
+exclude = ["migrations/versions", ".venv", "__pycache__", ".pytest_cache", ".ruff_cache"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "ASYNC", "C4", "SIM", "RUF"]

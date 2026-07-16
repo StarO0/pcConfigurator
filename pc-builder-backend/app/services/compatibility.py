@@ -46,7 +46,7 @@ class CompatibilityEngine:
             return
         cpu_socket = cpu.specs.get("socket")
         board_socket = motherboard.specs.get("socket")
-        if cpu_socket != board_socket:
+        if cpu_socket and board_socket and cpu_socket != board_socket:
             issues.append(
                 self._error(
                     "cpu_socket_mismatch",
@@ -103,7 +103,9 @@ class CompatibilityEngine:
     def _memory(self, motherboard, ram, cooler, issues: list[CompatibilityIssue]) -> None:
         if not motherboard or not ram:
             return
-        if motherboard.specs.get("ram_type") != ram.specs.get("ram_type"):
+        board_ram_type = motherboard.specs.get("ram_type")
+        memory_ram_type = ram.specs.get("ram_type")
+        if board_ram_type and memory_ram_type and board_ram_type != memory_ram_type:
             issues.append(
                 self._error(
                     "ram_type_mismatch",
@@ -115,8 +117,8 @@ class CompatibilityEngine:
                     },
                 )
             )
-        modules = int(ram.specs.get("modules", 1))
-        slots = int(motherboard.specs.get("ram_slots", 4))
+        modules = self._as_int(ram.specs.get("modules"), 1)
+        slots = self._as_int(motherboard.specs.get("ram_slots"), 4)
         if modules > slots:
             issues.append(
                 self._error(
@@ -126,8 +128,8 @@ class CompatibilityEngine:
                     {"modules": modules, "slots": slots},
                 )
             )
-        capacity = int(ram.specs.get("capacity_gb", 0))
-        max_capacity = int(motherboard.specs.get("max_ram_gb", 9999))
+        capacity = self._as_int(ram.specs.get("capacity_gb"), 0)
+        max_capacity = self._as_int(motherboard.specs.get("max_ram_gb"), 9999)
         if capacity > max_capacity:
             issues.append(
                 self._error(
@@ -137,8 +139,8 @@ class CompatibilityEngine:
                     {"capacity_gb": capacity, "max_capacity_gb": max_capacity},
                 )
             )
-        speed = int(ram.specs.get("speed_mhz", 0))
-        max_speed = int(motherboard.specs.get("max_ram_speed_mhz", 99999))
+        speed = self._as_int(ram.specs.get("speed_mhz"), 0)
+        max_speed = self._as_int(motherboard.specs.get("max_ram_speed_mhz"), 99999)
         if speed > max_speed:
             issues.append(
                 self._warning(
@@ -182,7 +184,8 @@ class CompatibilityEngine:
         if not cpu or not cooler:
             return
         socket = cpu.specs.get("socket")
-        if socket not in cooler.specs.get("sockets", []):
+        cooler_sockets = cooler.specs.get("sockets", [])
+        if socket and cooler_sockets and socket not in cooler_sockets:
             issues.append(
                 self._error(
                     "cooler_socket_mismatch",
@@ -193,7 +196,7 @@ class CompatibilityEngine:
             )
         cpu_power = float(cpu.specs.get("peak_power_w", cpu.specs.get("power_w", 0)))
         capacity = float(cooler.specs.get("cooling_capacity_w", 0))
-        if capacity < cpu_power:
+        if cpu_power and capacity and capacity < cpu_power:
             issues.append(
                 self._error(
                     "cooler_capacity_low",
@@ -202,7 +205,7 @@ class CompatibilityEngine:
                     {"required_w": cpu_power, "capacity_w": capacity},
                 )
             )
-        elif capacity < cpu_power * 1.2:
+        elif cpu_power and capacity and capacity < cpu_power * 1.2:
             issues.append(
                 self._warning(
                     "cooler_low_headroom",
@@ -214,7 +217,7 @@ class CompatibilityEngine:
         if cooler.specs.get("type") == "aio" and case:
             radiator = int(cooler.specs.get("radiator_mm", 0))
             supported = case.specs.get("radiator_support_mm", [])
-            if radiator and radiator not in supported:
+            if radiator and supported and radiator not in supported:
                 issues.append(
                     self._error(
                         "radiator_not_supported",
@@ -227,8 +230,12 @@ class CompatibilityEngine:
     def _case(self, motherboard, gpu, psu, case, cooler, issues: list[CompatibilityIssue]) -> None:
         if not case:
             return
-        if motherboard and motherboard.specs.get("form_factor") not in case.specs.get(
-            "motherboard_form_factors", []
+        motherboard_form_factor = motherboard.specs.get("form_factor") if motherboard else None
+        supported_motherboards = case.specs.get("motherboard_form_factors", [])
+        if (
+            motherboard_form_factor
+            and supported_motherboards
+            and motherboard_form_factor not in supported_motherboards
         ):
             issues.append(
                 self._error(
@@ -244,7 +251,7 @@ class CompatibilityEngine:
         if gpu:
             gpu_length = float(gpu.specs.get("length_mm", 0))
             max_length = float(case.specs.get("max_gpu_length_mm", 0))
-            if gpu_length > max_length:
+            if gpu_length and max_length and gpu_length > max_length:
                 issues.append(
                     self._error(
                         "gpu_too_long",
@@ -311,7 +318,7 @@ class CompatibilityEngine:
         if cooler and cooler.specs.get("type", "air") == "air":
             height = float(cooler.specs.get("height_mm", 0))
             available = float(case.specs.get("max_cooler_height_mm", 0))
-            if height > available:
+            if height and available and height > available:
                 issues.append(
                     self._error(
                         "cooler_too_tall",
@@ -325,9 +332,9 @@ class CompatibilityEngine:
                     )
                 )
         if psu:
-            if psu.specs.get("form_factor", "ATX") not in case.specs.get(
-                "psu_form_factors", ["ATX"]
-            ):
+            psu_form_factor = psu.specs.get("form_factor")
+            supported_psus = case.specs.get("psu_form_factors", [])
+            if psu_form_factor and supported_psus and psu_form_factor not in supported_psus:
                 issues.append(
                     self._error(
                         "psu_form_factor_mismatch",
@@ -359,13 +366,14 @@ class CompatibilityEngine:
         if not cpu or not gpu or not psu:
             return
         required = self.required_psu_w(cpu, gpu)
-        if int(psu.specs.get("wattage", 0)) < required:
+        actual_wattage = self._as_int(psu.specs.get("wattage"), 0)
+        if actual_wattage and actual_wattage < required:
             issues.append(
                 self._error(
                     "psu_power_low",
                     f"Нужен БП минимум примерно {required} Вт.",
                     ["cpu", "gpu", "psu"],
-                    {"required_w": required, "actual_w": int(psu.specs.get("wattage", 0))},
+                    {"required_w": required, "actual_w": actual_wattage},
                 )
             )
         required_connectors = list(gpu.specs.get("power_connectors", []))
@@ -377,7 +385,7 @@ class CompatibilityEngine:
                 remaining.remove(connector)
             else:
                 missing.append(connector)
-        if missing:
+        if available and missing:
             issues.append(
                 self._error(
                     "psu_connector_missing",
@@ -409,7 +417,10 @@ class CompatibilityEngine:
             return
         interface = storage.specs.get("interface")
         if interface == "NVMe":
-            if int(motherboard.specs.get("m2_slots", 0)) < 1:
+            if (
+                "m2_slots" in motherboard.specs
+                and self._as_int(motherboard.specs.get("m2_slots"), 0) < 1
+            ):
                 issues.append(
                     self._error(
                         "m2_slot_missing",
@@ -417,8 +428,9 @@ class CompatibilityEngine:
                         ["motherboard", "storage"],
                     )
                 )
-            size = int(storage.specs.get("form_factor", 2280))
-            if size not in motherboard.specs.get("m2_sizes", [2280]):
+            size = self._as_int(storage.specs.get("form_factor"), 2280)
+            m2_sizes = motherboard.specs.get("m2_sizes", [])
+            if m2_sizes and size not in m2_sizes:
                 issues.append(
                     self._error(
                         "m2_size_unsupported",
@@ -427,9 +439,9 @@ class CompatibilityEngine:
                         {"required": size},
                     )
                 )
-            drive_pcie = int(storage.specs.get("pcie_generation", 3))
-            board_pcie = int(motherboard.specs.get("m2_pcie_generation", 3))
-            if drive_pcie > board_pcie:
+            drive_pcie = self._as_int(storage.specs.get("pcie_generation"), 0)
+            board_pcie = self._as_int(motherboard.specs.get("m2_pcie_generation"), 0)
+            if drive_pcie and board_pcie and drive_pcie > board_pcie:
                 issues.append(
                     self._info(
                         "storage_pcie_downshift",
@@ -438,7 +450,11 @@ class CompatibilityEngine:
                         {"drive_generation": drive_pcie, "board_generation": board_pcie},
                     )
                 )
-        if interface == "SATA" and int(motherboard.specs.get("sata_ports", 0)) < 1:
+        if (
+            interface == "SATA"
+            and "sata_ports" in motherboard.specs
+            and self._as_int(motherboard.specs.get("sata_ports"), 0) < 1
+        ):
             issues.append(
                 self._error(
                     "sata_port_missing",
@@ -458,8 +474,8 @@ class CompatibilityEngine:
                     ["motherboard", "case"],
                 )
             )
-        required_fan_headers = int(case.specs.get("included_fans", 0))
-        fan_headers = int(motherboard.specs.get("fan_headers", 1))
+        required_fan_headers = self._as_int(case.specs.get("included_fans"), 0)
+        fan_headers = self._as_int(motherboard.specs.get("fan_headers"), 1)
         if required_fan_headers > fan_headers and not case.specs.get("fan_hub", False):
             issues.append(
                 self._warning(
@@ -537,6 +553,15 @@ class CompatibilityEngine:
             ).split(".")
             if part.isdigit()
         )
+
+    @staticmethod
+    def _as_int(value: Any, default: int = 0) -> int:
+        if isinstance(value, list):
+            value = value[0] if value else default
+        try:
+            return int(float(str(value).replace(",", ".").split()[0]))
+        except (TypeError, ValueError, IndexError):
+            return default
 
 
 compatibility_engine = CompatibilityEngine()

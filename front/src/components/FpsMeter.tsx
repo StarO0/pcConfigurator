@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, useTransform, animate } from "framer-motion";
-import { Gamepad2, Briefcase, Monitor, Settings } from "lucide-react";
+import { Gamepad2, Briefcase, Monitor, Settings, Loader2 } from "lucide-react";
 import benchmarks from "@/data/benchmarks";
+import type { BenchmarkData } from "@/data/benchmarks";
+import type { Build } from "@/data/builds";
 import messages from "@/i18n/messages";
+import { api, type ApiBuildAnalysis } from "@/lib/api";
+import { useAuthStore } from "@/store/auth-store";
 import { useConfiguratorStore } from "@/store/configurator-store";
-import { useEffect, useRef } from "react";
 
 /* ─── animated FPS counter ─── */
 function AnimatedFps({ value }: { value: number }) {
@@ -44,14 +47,76 @@ function fpsGlow(fps: number) {
   return "shadow-orange-500/20";
 }
 
+const ANALYSIS_TEXT = {
+  en: { loading: "Calculating performance…", unavailable: "Performance estimate is unavailable", api: "Local API estimate", demo: "Demo estimate" },
+  ru: { loading: "Рассчитываем производительность…", unavailable: "Оценка производительности недоступна", api: "Расчёт локального API", demo: "Демонстрационная оценка" },
+  uk: { loading: "Розраховуємо продуктивність…", unavailable: "Оцінка продуктивності недоступна", api: "Розрахунок локального API", demo: "Демонстраційна оцінка" },
+  pl: { loading: "Obliczanie wydajności…", unavailable: "Ocena wydajności jest niedostępna", api: "Szacunek lokalnego API", demo: "Szacunek demonstracyjny" },
+};
+
+function mapAnalysis(analysis: ApiBuildAnalysis): BenchmarkData {
+  return {
+    gaming: analysis.performance
+      .filter((entry) => entry.kind === "game")
+      .map((entry) => ({
+        game: entry.workload_name,
+        resolution: entry.resolution ?? "—",
+        fps: Math.round(entry.value),
+        preset: entry.settings ?? entry.confidence,
+      })),
+    work: analysis.performance
+      .filter((entry) => entry.kind !== "game")
+      .map((entry) => ({
+        task: entry.workload_name,
+        time: `${entry.value.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${entry.unit}`,
+      })),
+  };
+}
+
 /* ─── main component ─── */
-export function FpsMeter({ buildId }: { buildId: string }) {
+export function FpsMeter({ build }: { build: Build }) {
   const language = useConfiguratorStore((s) => s.language);
+  const accessToken = useAuthStore((s) => s.accessToken);
   const t = messages[language];
-  const data = benchmarks[buildId];
+  const statusText = ANALYSIS_TEXT[language] ?? ANALYSIS_TEXT.en;
+  const [analysis, setAnalysis] = useState<ApiBuildAnalysis | null>(null);
+  const [analysisFailed, setAnalysisFailed] = useState(false);
   const [tab, setTab] = useState<"gaming" | "work">("gaming");
 
-  if (!data) return null;
+  useEffect(() => {
+    if (!build.backendId) return;
+    let active = true;
+    void api
+      .analysis(build, language, accessToken)
+      .then((result) => {
+        if (active) setAnalysis(result);
+      })
+      .catch(() => {
+        if (active) setAnalysisFailed(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [accessToken, build, language]);
+
+  const data = analysis ? mapAnalysis(analysis) : benchmarks[build.id];
+
+  if (build.backendId && !analysis && !analysisFailed) {
+    return (
+      <div className="flex min-h-40 items-center justify-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] text-sm text-white/50">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        {statusText.loading}
+      </div>
+    );
+  }
+
+  if (!data || (!data.gaming.length && !data.work.length)) {
+    return (
+      <div className="flex min-h-32 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.03] text-sm text-white/40">
+        {statusText.unavailable}
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-2xl overflow-hidden">
@@ -174,6 +239,9 @@ export function FpsMeter({ buildId }: { buildId: string }) {
             </motion.div>
           )}
         </AnimatePresence>
+        <p className="mt-4 text-center text-[10px] uppercase tracking-wider text-white/25">
+          {analysis ? statusText.api : statusText.demo}
+        </p>
       </div>
     </div>
   );

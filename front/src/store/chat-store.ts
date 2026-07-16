@@ -116,7 +116,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
         // Trigger actual build generation after additional delay
         setTimeout(() => {
-          useConfiguratorStore.getState().triggerGenerate();
+          const prompt = `${get().initialPrompt}. ${content}`;
+          void useConfiguratorStore.getState().triggerGenerate(prompt);
           set({ phase: "chatting" });
         }, 2500);
       }, 500);
@@ -140,7 +141,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
           set((state) => ({ messages: [...state.messages, detailMsg] }));
 
           // Re-generate builds
-          useConfiguratorStore.getState().triggerGenerate();
+          const prompt = `${get().initialPrompt}. ${content}`;
+          void useConfiguratorStore.getState().triggerGenerate(prompt);
         }, 2000);
       }, 1500);
 

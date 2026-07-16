@@ -203,11 +203,9 @@ class BuildGenerator:
                     )
                 )
             generated.append(GeneratedBuild(build=build, access_token=raw_access_token))
+        if not generated:
+            raise ValueError("Каталог слишком мал или бюджет слишком низкий для совместимой сборки")
         await session.commit()
-        if len(generated) < 3:
-            raise ValueError(
-                "Каталог слишком мал или бюджет слишком низкий для нескольких разных сборок"
-            )
         return generated
 
     async def _load_candidates(

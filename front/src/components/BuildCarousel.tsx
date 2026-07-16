@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Check, Heart } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Check, Heart, XCircle } from "lucide-react";
 import { useConfiguratorStore } from "@/store/configurator-store";
 import { useAuthStore } from "@/store/auth-store";
 import messages from "@/i18n/messages";
@@ -45,20 +45,27 @@ export function BuildCarousel() {
   const t = messages[language];
   const [direction, setDirection] = useState(0);
   const [savedMessage, setSavedMessage] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const currentBuild = builds[currentBuildIndex];
+  const compatibility = currentBuild.compatibilityStatus ?? "compatible";
 
   // Calculate total wattage
   const totalWatts = Object.values(currentBuild.components).reduce((sum, c) => sum + (c?.wattage ?? 0), 0);
 
-  function handleSave() {
+  async function handleSave() {
+    setSaveError(null);
     if (!isLoggedIn) {
       openAuthModal("login");
       return;
     }
     const name = `${currentBuild.badge.label[language]} — ${currentBuild.totalPrice.toLocaleString()} zł`;
-    saveBuild(currentBuild, name);
-    setSavedMessage(true);
-    setTimeout(() => setSavedMessage(false), 2500);
+    const result = await saveBuild(currentBuild, name);
+    if (result.success) {
+      setSavedMessage(true);
+      setTimeout(() => setSavedMessage(false), 2500);
+    } else {
+      setSaveError(result.error ?? "Не удалось сохранить сборку");
+    }
   }
 
   /* ─── navigation helpers ─── */
@@ -106,7 +113,7 @@ export function BuildCarousel() {
           >
             {/* ── Left Column (Build Components) ── */}
             <div className="lg:col-span-2">
-              <BuildCard build={currentBuild} buildIndex={currentBuildIndex} />
+              <BuildCard build={currentBuild} />
             </div>
 
             {/* ── Right Column (Sidebar) ── */}
@@ -135,11 +142,31 @@ export function BuildCarousel() {
                   </div>
 
                   {/* Compatibility */}
-                  <div className="flex items-center gap-2 mb-6">
-                    <div className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400">
-                      <Check className="w-3.5 h-3.5" strokeWidth={3} />
+                  <div
+                    className={`flex items-center gap-2 mb-6 ${
+                      compatibility === "compatible"
+                        ? "text-emerald-400"
+                        : compatibility === "warning"
+                          ? "text-amber-400"
+                          : "text-red-400"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center w-5 h-5 rounded-full bg-current/10">
+                      {compatibility === "compatible" ? (
+                        <Check className="w-3.5 h-3.5" strokeWidth={3} />
+                      ) : compatibility === "warning" ? (
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                      ) : (
+                        <XCircle className="w-3.5 h-3.5" />
+                      )}
                     </div>
-                    <span className="text-sm font-medium text-emerald-400">Kompatybilność OK</span>
+                    <span className="text-sm font-medium">
+                      {compatibility === "compatible"
+                        ? "Kompatybilność OK"
+                        : compatibility === "warning"
+                          ? "Есть предупреждения совместимости"
+                          : "Компоненты несовместимы"}
+                    </span>
                   </div>
 
                   {/* Power Badge */}
@@ -148,7 +175,7 @@ export function BuildCarousel() {
                   {/* Button */}
                   <div className="flex gap-2 mt-4">
                     <button
-                      onClick={() => useConfiguratorStore.getState().triggerGenerate()}
+                      onClick={() => void useConfiguratorStore.getState().triggerGenerate()}
                       className="flex-1 py-3 px-4 rounded-xl font-bold text-white shadow-lg transition-all
                                  bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400
                                  active:scale-95 flex items-center justify-center gap-2 text-sm"
@@ -168,10 +195,11 @@ export function BuildCarousel() {
                       )}
                     </button>
                   </div>
+                  {saveError && <p className="mt-2 text-xs text-red-400">{saveError}</p>}
                 </div>
 
                 {/* 2. FpsMeter */}
-                <FpsMeter buildId={currentBuild.id} />
+                <FpsMeter key={currentBuild.id} build={currentBuild} />
 
                 {/* 3. AI Explanation */}
                 <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-2xl p-6">
@@ -245,4 +273,3 @@ export function BuildCarousel() {
     </section>
   );
 }
-

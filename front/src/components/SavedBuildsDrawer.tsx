@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Heart, Trash2, ChevronRight, Clock } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
@@ -16,6 +17,7 @@ function formatPrice(price: number): string {
 
 export default function SavedBuildsDrawer() {
   const { savedBuildsOpen, closeSavedBuilds, savedBuilds, removeSavedBuild } = useAuthStore();
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   return (
     <AnimatePresence>
@@ -62,6 +64,11 @@ export default function SavedBuildsDrawer() {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto py-3 px-4 space-y-3">
+              {deleteError && (
+                <p className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">
+                  {deleteError}
+                </p>
+              )}
               {savedBuilds.length === 0 ? (
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -143,9 +150,13 @@ export default function SavedBuildsDrawer() {
                           Открыть <ChevronRight className="w-3 h-3" />
                         </button>
                         <button
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation();
-                            removeSavedBuild(sb.id);
+                            setDeleteError(null);
+                            const result = await removeSavedBuild(sb.id);
+                            if (!result.success) {
+                              setDeleteError(result.error ?? "Не удалось удалить сборку");
+                            }
                           }}
                           aria-label="Delete saved build"
                           className="p-2 rounded-lg text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
