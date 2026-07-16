@@ -11,6 +11,7 @@
     "test:e2e:install": "playwright install chromium"
   },
   "dependencies": {
+    "core-js": "^3.49.0",
     "framer-motion": "^12.42.2",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.24.0",
@@ -20,8 +21,8 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
     "@playwright/test": "^1.55.0",
+    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

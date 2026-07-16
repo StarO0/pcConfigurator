@@ -69,3 +69,35 @@ class AdminStatsOut(BaseModel):
     saved_builds: int
     stale_offers: int
     failed_parser_runs_24h: int
+
+
+class DuplicateProductOut(BaseModel):
+    id: UUID
+    category: str
+    brand: str
+    name: str
+    sku: str | None
+    ean: str | None
+    mpn: str | None
+
+
+class DuplicateGroupOut(BaseModel):
+    key: str
+    reason: str
+    products: list[DuplicateProductOut]
+
+
+class FilePreviewResponse(BaseModel):
+    rows: list[dict[str, Any]]
+    total: int
+    truncated: bool
+
+
+class NormalizationResponse(BaseModel):
+    scanned: int
+    changed: int
+    dry_run: bool
+
+
+class LocalRestoreResponse(BaseModel):
+    message: str

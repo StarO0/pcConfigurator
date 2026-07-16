@@ -63,6 +63,8 @@ services:
       POSTGRES_DB: pcbuilder
       POSTGRES_USER: pcbuilder
       POSTGRES_PASSWORD: pcbuilder
+    ports:
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

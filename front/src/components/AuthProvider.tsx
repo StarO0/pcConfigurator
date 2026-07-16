@@ -4,12 +4,12 @@ import { useEffect } from "react";
 import { useAuthStore } from "@/store/auth-store";
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
-  const fetchMe = useAuthStore((s) => s.fetchMe);
+  const ensureAccessToken = useAuthStore((s) => s.ensureAccessToken);
 
   useEffect(() => {
-    // Attempt to fetch current user profile if we have a token
-    fetchMe();
-  }, [fetchMe]);
+    // Attempt to validate/refresh current user profile if we have a token
+    void ensureAccessToken();
+  }, [ensureAccessToken]);
 
   return <>{children}</>;
 }

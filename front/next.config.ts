@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
   compress: true,
+  serverExternalPackages: ["jspdf", "canvg", "html2canvas", "core-js"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
